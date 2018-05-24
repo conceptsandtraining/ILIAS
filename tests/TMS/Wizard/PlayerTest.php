@@ -742,11 +742,12 @@ class TMS_Wizard_PlayerTest extends PHPUnit_Framework_TestCase {
 		$step_number = 2;
 		$data0 = "DATA 0";
 		$data1 = array("foo" => "bar");
-		$data2 = "DATA 2";
+		$data2 = array("data" => "DATA 2");
 		$state = (new Wizard\State($this->wizard_id, $step_number))
 			->withStepData(0, $data0)
 			->withStepData(1, $data1)
 			->withStepData(2, $data2);
+
 		$this->state_db
 			->expects($this->once())
 			->method("load")
@@ -757,29 +758,31 @@ class TMS_Wizard_PlayerTest extends PHPUnit_Framework_TestCase {
 		$step1 = $this->createStepMock();
 		$step2 = $this->createStepMock();
 		$this->wizard
-			->expects($this->once())
+			->expects($this->exactly(2))
 			->method("getSteps")
 			->willReturn([$step0, $step1, $step2]);
 
 		$form_step1 = $this->createMock(\ilPropertyFormGUI::class);
+		$form_step2 = $this->createMock(\ilPropertyFormGUI::class);
 
 		$step0
 			->expects($this->never())
 			->method($this->anything());
 
 		$step2
-			->expects($this->never())
-			->method($this->anything());
+			->expects($this->once())
+			->method("getData")
+			->will($this->returnValue($data2));
 
 		$this->ilias_bindings
-			->expects($this->once())
+			->expects($this->exactly(2))
 			->method("getForm")
-			->willReturn($form_step1);
+			  ->will($this->onConsecutiveCalls($form_step2, $form_step1));
 
 		$this->state_db
-			->expects($this->once())
+			->expects($this->exactly(2))
 			->method("save")
-			->with($state->withPreviousStep());
+			->withConsecutive(array($state), array($state->withPreviousStep()));
 
 		$step1
 			->expects($this->once())
@@ -797,7 +800,7 @@ class TMS_Wizard_PlayerTest extends PHPUnit_Framework_TestCase {
 			->method("getHTML")
 			->willReturn($html);
 
-		$view = $this->player->run("previous", []);
+		$view = $this->player->run("previous", $data2);
 
 		$this->assertEquals($html, $view);
 	}
