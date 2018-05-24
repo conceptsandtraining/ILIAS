@@ -169,7 +169,7 @@ class UnboundCourseProvider extends SeparatedUnboundProvider {
 		$ret[] = $this->createCourseInfoObject($entity
 			, $this->lng->txt("date").":"
 			, $date
-			, 300
+			, 200
 			, [CourseInfo::CONTEXT_SEARCH_FURTHER_INFO,
 				CourseInfo::CONTEXT_USER_BOOKING_FURTHER_INFO
 			  ]
@@ -520,7 +520,7 @@ class UnboundCourseProvider extends SeparatedUnboundProvider {
 				$ret[] = $this->createCourseInfoObject($entity
 					, $txt("title").":"
 					, nl2br($name)
-					, 350
+					, 300
 					, [CourseInfo::CONTEXT_SEARCH_FURTHER_INFO,
 						CourseInfo::CONTEXT_USER_BOOKING_FURTHER_INFO
 					  ]
@@ -560,7 +560,7 @@ class UnboundCourseProvider extends SeparatedUnboundProvider {
 					$ret[] = $this->createCourseInfoObject($entity
 						, $txt("title").":"
 						, join("<br />", $val)
-						, 350
+						, 300
 						, [CourseInfo::CONTEXT_SEARCH_FURTHER_INFO,
 							CourseInfo::CONTEXT_USER_BOOKING_FURTHER_INFO
 						  ]
