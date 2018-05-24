@@ -217,6 +217,17 @@ class ilTMSMailContextCourse implements Mailing\MailContext {
 		return $trainer->getLastname();
 	}
 
+
+	/**
+	 * @param  ilObjUser 	$a
+	 * @param  ilObjUser 	$b
+	 * @return int
+	 */
+    protected function sortByLastname($a, $b) {
+        return strcasecmp($a->getLastname(), $b->getLastname());
+    }
+
+
 	/**
 	 * @return string | null
 	 */
@@ -225,6 +236,9 @@ class ilTMSMailContextCourse implements Mailing\MailContext {
 		if(count($trainers) === 0) {
 			return null;
 		}
+
+        usort($trainers, array($this, 'sortByLastname'));
+
 		$buf = [];
 		foreach ($trainers as $trainer) {
 			$buf[] =  $trainer->getFirstname() .' ' .$trainer->getLastname();
