@@ -64,12 +64,13 @@ class TMSMailClerk {
 	 */
 	public function process($mails, $event) {
 
-		$err = array();
 		$mail_from_address = $this->from->getMailAddress();
 		$mail_from_name = $this->from->getUserName();
 
 		foreach ($mails as $mail) {
 			$do_send = true;
+			$err = array();
+
 			$recipient = $mail->getRecipient();
 			$contexts = $mail->getContexts();
 			$attachments = $mail->getAttachments();
