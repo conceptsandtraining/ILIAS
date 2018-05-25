@@ -23,6 +23,16 @@ class ilTrainingSearchGUI {
 	const PAGINATION_PARAM = "pagination";
 	const DROPDOWN_AT_PAGES = 1;
 
+	static protected $save_parameter = array(Helper::S_USER,
+			Helper::F_TITLE,
+			Helper::F_TYPE,
+			Helper::F_TOPIC,
+			Helper::F_DURATION,
+			Helper::F_SORT_VALUE,
+			Helper::F_ONLY_BOOKABLE,
+			Helper::F_IDD_RELEVANT
+		);
+
 	/**
 	 * @var ilTemplate
 	 */
@@ -97,11 +107,19 @@ class ilTrainingSearchGUI {
 				$this->g_ctrl->forwardCommand($gui);
 				break;
 			default:
-				$cmd = $this->g_ctrl->getCmd(self::CMD_SHOW);
+				$cmd = $this->g_ctrl->getCmd();
+
+				if(is_null($cmd) || $cmd == "") {
+					$this->g_ctrl->clearParameters($this);
+					$cmd = self::CMD_SHOW;
+				}
+
 				switch($cmd) {
 					case self::CMD_SHOW:
-					case self::CMD_CHANGE_USER:
 						$this->show();
+						break;
+					case self::CMD_CHANGE_USER:
+						$this->showUserResult();
 						break;
 					case self::CMD_FILTER:
 						$this->filter();
@@ -131,6 +149,21 @@ class ilTrainingSearchGUI {
 		$bookable_trainings = $this->getBookableTrainings($filter);
 		$bookable_trainings = $this->helper->sortBookableTrainings(array(Helper::F_SORT_VALUE => Helper::S_DEFAULT), $bookable_trainings);
 		$this->showTrainings($bookable_trainings, self::CMD_SHOW);
+	}
+
+	/**
+	 * Shows all bookable trainings
+	 *
+	 * @param string[] 	$filter
+	 *
+	 * @return void
+	 */
+	protected function showUserResult() {
+		$get = $_GET;
+		$filter = $this->helper->getFilterValuesFrom($get);
+		$bookable_trainings = $this->getBookableTrainings($filter);
+		$bookable_trainings = $this->helper->sortBookableTrainings(array(Helper::F_SORT_VALUE => Helper::S_DEFAULT), $bookable_trainings);
+		$this->showTrainings($bookable_trainings, self::CMD_CHANGE_USER);
 	}
 
 	/**
@@ -186,22 +219,16 @@ class ilTrainingSearchGUI {
 		$button1 = $this->g_f->button()->standard($this->g_lng->txt('search'), '#')
 			->withOnClick($modal->getShowSignal());
 
-		$current_page = (int)$_GET[self::PAGINATION_PARAM];
+		if(in_array($cmd, array(self::CMD_QUICKFILTER, CMD_FILTER))) {
+			$current_page = 0;
+		} else {
+			$current_page = (int)$_GET[self::PAGINATION_PARAM];
+		}
 
 		$view_control = array($button1);
 		$view_control = $this->addSortationObjects($view_control);
 
-		$parameter = array(Helper::S_USER,
-			Helper::F_TITLE,
-			Helper::F_TYPE,
-			Helper::F_TOPIC, 
-			Helper::F_DURATION,
-			Helper::F_SORT_VALUE,
-			Helper::F_ONLY_BOOKABLE,
-			Helper::F_IDD_RELEVANT
-		);
-
-		$this->g_ctrl->saveParameter($this, $parameter);
+		$this->g_ctrl->saveParameter($this, $this->save_parameter);
 
 		$link = $this->g_ctrl->getLinkTarget($this, $cmd, "", false, false);
 		$pagination = $this->g_f->viewControl()->pagination()
