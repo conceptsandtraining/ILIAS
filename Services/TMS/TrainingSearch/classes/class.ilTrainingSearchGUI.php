@@ -219,7 +219,7 @@ class ilTrainingSearchGUI {
 		$button1 = $this->g_f->button()->standard($this->g_lng->txt('search'), '#')
 			->withOnClick($modal->getShowSignal());
 
-		if(in_array($cmd, array(self::CMD_QUICKFILTER, CMD_FILTER))) {
+		if(in_array($cmd, array(self::CMD_QUICKFILTER, self::CMD_FILTER, self::CMD_CHANGE_USER))) {
 			$current_page = 0;
 		} else {
 			$current_page = (int)$_GET[self::PAGINATION_PARAM];
