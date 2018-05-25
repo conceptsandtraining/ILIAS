@@ -16070,8 +16070,8 @@ tms#:#placeholder_desc_crs_link#:#Link zum Kurs
 tms#:#placeholder_desc_crs_schedule#:#Zeitplan des Kurses
 tms#:#placeholder_desc_crs_startdate#:#Startdatum des Kurses
 tms#:#placeholder_desc_crs_enddate#:#Enddatum des Kurses
-tms#:#placeholder_desc_crs_trainer_firstname#:#Vorname des Trainers am Kurs (erster Trainer)
-tms#:#placeholder_desc_crs_trainer_lastname#:#Nachname des Trainers am Kurs (erster Trainer)
+tms#:#placeholder_desc_crs_trainer_firstname#:#Vorname des Trainers am Kurs (Verwendung nur bei max. 1 gebuchten Trainer möglich)
+tms#:#placeholder_desc_crs_trainer_lastname#:#Nachname des Trainers am Kurs (Verwendung nur bei max. 1 gebuchten Trainer möglich)
 tms#:#placeholder_desc_crs_all_trainers#:# Vor- und Nachnamen aller Trainer am Kurs
 tms#:#placeholder_desc_crs_admin_firstname#:#Vorname des Admins am Kurs
 tms#:#placeholder_desc_crs_admin_lastname#:#Nachname des Admins am Kurs
