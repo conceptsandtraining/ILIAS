@@ -29,7 +29,8 @@ class ilTMSMailContextCourse implements Mailing\MailContext {
 		'VENUE' => 'placeholder_desc_crs_venue',
 		'VENUE_NAME' => 'placeholder_desc_crs_venuename',
 		'TRAINING_PROVIDER' => 'placeholder_desc_crs_provider',
-		'BOOKING_LINK' => 'placeholder_desc_crs_booking_link'
+		'BOOKING_LINK' => 'placeholder_desc_crs_booking_link',
+		'MEMBERS_COUNT' => 'placeholder_desc_crs_members_count'
 	);
 
 	/**
@@ -105,6 +106,10 @@ class ilTMSMailContextCourse implements Mailing\MailContext {
 				return $this->crsProvider();
 			case 'BOOKING_LINK':
 				return $this->crsBookingLink();
+			case 'MEMBERS_COUNT':
+				return $this->crsMembersCount();
+
+
 			default:
 				return null;
 		}
@@ -499,6 +504,18 @@ class ilTMSMailContextCourse implements Mailing\MailContext {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Get the number of tutors and members for this course
+	 *
+	 * @return string
+	 */
+	protected function crsMembersCount() {
+		$participants = $this->getCourseObject()->getMembersObject();
+		$sum = $participants->getCountMembers()
+			+ count($participants->getTutors());
+		return (string)$sum;
 	}
 
 }

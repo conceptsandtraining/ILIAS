@@ -72,7 +72,7 @@ class Player {
 			case self::COMMAND_SAVE:
 				return $this->runStep($state, $post, false);
 			case self::COMMAND_PREVIOUS:
-				return $this->runPreviousStep($state);
+				return $this->runPreviousStep($state, $post);
 			case self::COMMAND_CONFIRM:
 				return $this->finish($state);
 		}
@@ -191,7 +191,34 @@ class Player {
 	 * @param	State	$state
 	 * @return	string
 	 */
-	protected function runPreviousStep(State $state) {
+	protected function runPreviousStep(State $state, $post) {
+		//save current step
+		assert('is_array($post) || is_null($post)');
+		$steps = $this->wizard->getSteps();
+		$step_number = $state->getStepNumber();
+		if($step_number < 0) {
+			throw new \LogicException("It is impossible that the number of step is smaller than 0.");
+		}
+
+		if(!is_null($post) && array_key_exists($step_number,$steps)) {
+			$step = $steps[$step_number];
+			$form = $this->buildStepForm($step_number, $step);
+			if ($form->checkInput()) {
+				$data = $step->getData($form);
+				if($data != null) {
+					$state = $state
+						->withStepData($step_number, $data);
+					$this->state_db->save($state);
+				} else {
+					return $form->getHtml();
+				}
+			} else {
+				$form->setValuesByPost();
+				return $form->getHtml();
+			}
+		}
+
+		//get back to previous step
 		$state = $state->withPreviousStep();
 		$this->state_db->save($state);
 		$step_number = $state->getStepNumber();

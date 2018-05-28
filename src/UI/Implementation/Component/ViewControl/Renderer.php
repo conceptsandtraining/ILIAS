@@ -298,6 +298,10 @@ class Renderer extends AbstractComponentRenderer
 				$url = $component->getTargetURL();
 				$url .= (strpos($url, '?') === false) ?  '?' : '&';
 				$url .= $component->getParameterName() .'=' .$val;
+
+				//this is a hack for TMS-1078
+				$url .= '&pagination=0';
+
 				$url = $this->appendCurrentGetParamters($url);
 				$shy = $f->button()->shy($label, $url);
 			}
@@ -347,6 +351,8 @@ class Renderer extends AbstractComponentRenderer
 				parse_str($query, $params);
 				$params[$component->getParameterName()] = $val;
 				$url = $base .http_build_query($params);
+
+				$url = $this->appendCurrentGetParamters($url);
 			}
 			$shy = $f->button()->shy($label, $url);
 		}
