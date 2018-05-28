@@ -199,8 +199,9 @@ class Player {
 		if($step_number < 0) {
 			throw new \LogicException("It is impossible that the number of step is smaller than 0.");
 		}
-		$step = $steps[$step_number];
-		if($post) {
+
+		if(!is_null($post) && array_key_exists($step_number,$steps)) {
+			$step = $steps[$step_number];
 			$form = $this->buildStepForm($step_number, $step);
 			if ($form->checkInput()) {
 				$data = $step->getData($form);
