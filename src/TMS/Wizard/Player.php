@@ -213,6 +213,7 @@ class Player {
 					return $form->getHtml();
 				}
 			} else {
+				$form->setValuesByPost();
 				return $form->getHtml();
 			}
 		}
