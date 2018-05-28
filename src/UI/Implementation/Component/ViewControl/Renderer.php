@@ -351,6 +351,8 @@ class Renderer extends AbstractComponentRenderer
 				parse_str($query, $params);
 				$params[$component->getParameterName()] = $val;
 				$url = $base .http_build_query($params);
+
+				$url = $this->appendCurrentGetParamters($url);
 			}
 			$shy = $f->button()->shy($label, $url);
 		}
