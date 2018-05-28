@@ -208,7 +208,11 @@ class Player {
 					$state = $state
 						->withStepData($step_number, $data);
 					$this->state_db->save($state);
+				} else {
+					return $form->getHtml();
 				}
+			} else {
+				return $form->getHtml();
 			}
 		}
 
