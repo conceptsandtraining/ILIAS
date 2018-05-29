@@ -103,6 +103,7 @@ class TMSMailClerk {
 				$this->sender->ClearAllRecipients(); //only send to one recipient!
 				$this->sender->ClearCCs();
 				$this->sender->ClearBCCs();
+				$this->sender->clearAttachments();
 				$this->sender->addAddress($mail_to_address, $mail_to_name);
 				$this->sender->Subject = $subject;
 				$this->sender->Body = $msg_html;
