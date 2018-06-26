@@ -137,15 +137,16 @@ class ilTMSMailContentBuilder implements Mailing\MailContentBuilder {
 	public function getEmbeddedImages(){
 		if(! is_null($this->skin)) {
 			$images_path = sprintf(self::CUSTOM_IMAGES, $this->skin);
+			$images = [];
 			if(is_dir($images_path)) {
 				$files = $this->readDir($images_path);
-				return $files;
-				/*
-				$images = preg_grep ('/\.jpg$/i', $files);
-				return $images;
-				*/
+				foreach ($files as $file) {
+					if(preg_match ('/\.jpg$/i', $file[1])) {
+						$images[] = $file;
+					}
+				}
 			}
-			return [];
+			return $images;
 		}
 		$files = $this->readDir(self::DEFAULT_IMAGES);
 		return $files;
