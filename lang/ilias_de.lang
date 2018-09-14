@@ -14357,3 +14357,4 @@ tms#:#aborted#:#Vorgang abgebrochen
 tms#:#title_booking_with_approval#:#Buchen mit Genehmigung für %s
 tms#:#no_approvers_for_user#:#In der Organisationsstruktur sind keine übergeordneten Benutzer mit der benötigten Position vorhanden. Die Buchungsanfrage kann nicht bearbeitet werden.
 tms#:#booking_request_created#:#Für das Training "%s" wurde eine Buchungsanfrage für %s gestellt.
+rbac#:#rbac_log_operation_rmv#:#Recht entfernt für "%s"
