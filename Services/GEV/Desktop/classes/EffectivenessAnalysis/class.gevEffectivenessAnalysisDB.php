@@ -158,11 +158,14 @@ class gevEffectivenessAnalysisDB {
 	 *
 	 * @return int[]
 	 */
-	public function getUserIdsForFirstMail($employees, $superior_id) {
+	public function getUserIdsForFirstMail($employees, $superior_id, $reason_for_eff_analysis) {
 		$query = "SELECT eff_analysis_due_date.crs_id AS send_for_crs, eff_analysis_due_date.user_id,\n"
 				." IF(ISNULL(MAX(eff_log_first.send)), true, false) AS send_first \n"
 				." ,eff_analysis.crs_id\n"
 				." FROM eff_analysis_due_date\n"
+				." JOIN hist_course hcrs\n"
+				."     ON eff_analysis_due_date.crs_id = hcrs.crs_id\n"
+				."        AND hcrs.hist_historic = 0\n"
 				." LEFT JOIN eff_analysis\n"
 				."     ON eff_analysis.crs_id = eff_analysis_due_date.crs_id\n"
 				."         AND eff_analysis.user_id = eff_analysis_due_date.user_id\n"
@@ -173,6 +176,8 @@ class gevEffectivenessAnalysisDB {
 				." WHERE ".$this->gDB->in("eff_analysis_due_date.user_id", $employees, false, "integer")."\n"
 				."     AND eff_analysis_due_date.due_date <= DATE_SUB(CURDATE(), INTERVAL 15 DAY)\n"
 				."     AND eff_analysis_due_date.due_date != '0000-00-00'\n"
+				."     AND hcrs.begin_date != '0000-00-00'\n"
+				."     AND ".$this->gDB->in("hcrs.reason_for_training", $reason_for_eff_analysis, false, "text")."\n"
 				." GROUP BY eff_analysis_due_date.user_id, eff_analysis_due_date.crs_id\n"
 				." HAVING send_first = true AND eff_analysis.crs_id IS NULL\n";
 
@@ -192,7 +197,7 @@ class gevEffectivenessAnalysisDB {
 	 *
 	 * @return int[]
 	 */
-	public function getUserIdsForReminder($employees, $superior_id) {
+	public function getUserIdsForReminder($employees, $superior_id, $reason_for_eff_analysis) {
 		$query = "SELECT eff_analysis_due_date.crs_id as send_for_crs, eff_analysis_due_date.user_id,\n"
 				." IF(ISNULL(MAX(eff_log_first.send)), false,\n"
 				."     IF(ISNULL(MAX(eff_log_second.send)) AND MAX(eff_log_first.send) <= DATE_SUB(CURDATE(), INTERVAL 15 DAY), true,\n"
@@ -201,6 +206,9 @@ class gevEffectivenessAnalysisDB {
 				." ) AS send_second \n"
 				." ,eff_analysis.crs_id\n"
 				." FROM eff_analysis_due_date\n"
+				." JOIN hist_course hcrs\n"
+				."     ON eff_analysis_due_date.crs_id = hcrs.crs_id\n"
+				."        AND hcrs.hist_historic = 0\n"
 				." LEFT JOIN eff_analysis\n"
 				."     ON eff_analysis.crs_id = eff_analysis_due_date.crs_id\n"
 				."         AND eff_analysis.user_id = eff_analysis_due_date.user_id\n"
@@ -215,6 +223,8 @@ class gevEffectivenessAnalysisDB {
 				." WHERE ".$this->gDB->in("eff_analysis_due_date.user_id", $employees, false, "integer")."\n"
 				."     AND eff_analysis_due_date.due_date <= DATE_SUB(CURDATE(), INTERVAL 15 DAY)\n"
 				."     AND eff_analysis_due_date.due_date != '0000-00-00'\n"
+				."     AND hcrs.begin_date != '0000-00-00'\n"
+				."     AND ".$this->gDB->in("hcrs.reason_for_training", $reason_for_eff_analysis, false, "text")."\n"
 				." GROUP BY eff_analysis_due_date.user_id, eff_analysis_due_date.crs_id\n"
 				." HAVING send_second = true AND eff_analysis.crs_id IS NULL\n";
 
@@ -262,14 +272,15 @@ class gevEffectivenessAnalysisDB {
 				." JOIN hist_userorgu husrorgu\n"
 				."    ON husrorgu.usr_id = husr.user_id\n"
 				."        AND husrorgu.hist_historic = 0\n"
-				."        AND husrorgu.action = 1\n"
+				."        AND (husrorgu.action = 1 OR husrorgu.action = 0)\n"
 				." LEFT JOIN hist_userorgu husrorgu2\n"
 				."    ON husrorgu2.orgu_id = husrorgu.orgu_id\n"
 				."        AND husrorgu2.hist_historic = 0\n"
-				."        AND husrorgu2.action = 1\n"
+				."        AND (husrorgu2.action = 1 OR husrorgu2.action = 0)\n"
 				."        AND husrorgu2.rol_title = ".$this->gDB->quote("Vorgesetzter", "text")."\n"
 				." LEFT JOIN hist_user husr2\n"
 				."    ON husrorgu2.usr_id = husr2.user_id\n"
+				."        AND husr2.hist_historic = 0\n"
 				." LEFT JOIN ".self::TABLE_FINISHED_EFF_ANA." effa\n"
 				."    ON effa.crs_id = dued_eff_ana.crs_id\n"
 				."        AND effa.user_id = dued_eff_ana.user_id\n"
