@@ -291,7 +291,11 @@ class SelectableReportTableGUI extends ilTable2GUI {
 			}
 		}
 		$order_direction = $this->determineOrderDirection();
-		$space->orderBy(array_keys($order_fields),$order_direction);
+		if(!in_array($this->determineOrderColumnId(), $this->internal_sorting_columns)) {
+			$space->orderBy(array_keys($order_fields),$order_direction);
+		} else {
+			$this->setExternalSorting(false);
+		}
 		$this->setOrderField($this->determineOrderColumnId());
 		$this->setOrderDirection($order_direction);
 		$this->g_ctrl->setParameter($this->parent_gui,$this->getNavParameter(),$this->nav_value);
