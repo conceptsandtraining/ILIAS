@@ -14,6 +14,7 @@ class SelectableReportTableGUI extends ilTable2GUI {
 	protected $order = [];
 	protected $selectable = [];
 	protected $internal_sorting_columns = [];
+	protected $nummeric_ordering_columns = [];
 	protected $export_writer = [];
 	protected $default_order_column;
 	protected $default_order_direction = self::ORDER_ASC;
@@ -161,7 +162,8 @@ class SelectableReportTableGUI extends ilTable2GUI {
 		$selectable = false,
 		$sort = true,
 		$no_excel =  false,
-		$postprocessed_sorting = false) {
+		$postprocessed_sorting = false,
+		$nummeric_ordering = false) {
 
 		$this->fields[$column_id] = $fields;
 		$this->order[] = $column_id;
@@ -181,8 +183,20 @@ class SelectableReportTableGUI extends ilTable2GUI {
 		if($postprocessed_sorting) {
 			$this->internal_sorting_columns[] = $column_id;
 		}
+		if($nummeric_ordering) {
+			$this->nummeric_ordering_columns[] = $column_id;
+		}
 		return $this;
 	}
+
+	/**
+	 * @inheritdoc
+	 */
+	public function numericOrdering($a_field)
+	{
+		return in_array($a_field, $this->nummeric_ordering_columns);
+	}
+
 
 	/**
 	 * @inheritdoc
