@@ -272,7 +272,10 @@ class SelectableReportTableGUI extends ilTable2GUI {
 	 * According to selection addColumns
 	 */
 	protected function spanColumns() {
-		$this->addColumn("", "blank", "0px", false);
+		if($this->getMulitCommandCount() == 0) {
+			$this->addColumn("", "blank", "0px", false);
+		}
+
 		$relevant = $this->relevantColumns();
 		foreach ($this->order as $column_id) {
 			if(isset($relevant[$column_id])) {
@@ -401,5 +404,10 @@ class SelectableReportTableGUI extends ilTable2GUI {
 			$this->nav_value = $_POST[$this->getNavParameter()];
 		}
 		parent::determineOffsetAndOrder($a_omit_offset);
+	}
+
+	protected function getMulitCommandCount()
+	{
+		return count($this->multi);
 	}
 }
