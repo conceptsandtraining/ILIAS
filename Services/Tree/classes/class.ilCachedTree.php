@@ -223,6 +223,35 @@ class ilCachedTree extends ilTree
 		return $nodes;
 	}
 
+
+	/**
+	 * Get all ids of subnodes
+	 * @return
+	 * @param object $a_ref_id
+	 */
+	public function getSubTreeIds($a_ref_id)
+	{
+		$nodes = $this->getSubTreeRecursive($a_ref_id);
+
+		$ids = [];
+		foreach($nodes as $node) {
+			$ids[] = $node["child"];
+		}
+
+		return $ids;
+	}
+
+	protected function getSubTreeRecursive($node) {
+		$children = $this->getChilds($node);
+		foreach ($children as $child) {
+			yield $child;
+			foreach ($this->getSubTreeRecursive($child["child"]) as $sub) {
+				yield $sub;
+			}
+		}
+	}
+
+
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
 	//--------------------------------------
@@ -503,18 +532,6 @@ class ilCachedTree extends ilTree
 	{
 		return $this->other->getFilteredSubTree($a_node_id, $a_filter);
 	}
-	
-	/**
-	 * Get all ids of subnodes
-	 * @return 
-	 * @param object $a_ref_id
-	 */
-	public function getSubTreeIds($a_ref_id)
-	{
-		// TODO: Cache me!
-		return $this->other->getSubTreeIds($a_ref_id);
-	}
-	
 
 	/**
 	* get all nodes in the subtree under specified node
