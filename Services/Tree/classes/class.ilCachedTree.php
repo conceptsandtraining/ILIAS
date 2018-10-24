@@ -249,22 +249,76 @@ class ilCachedTree extends ilTree
 	 */
 	public function getSubTreeIds($a_ref_id)
 	{
-		$nodes = $this->getSubTreeRecursive($a_ref_id);
+		$node = $this->getNodeData($a_ref_id);
+		return iterator_to_array(
+			$this->getIdsFromNodes(
+				$this->getSubTreeRecursive($node)
+			)
+		);
+	}
 
-		$ids = [];
-		foreach($nodes as $node) {
-			$ids[] = $node["child"];
+	/**
+	* get all nodes in the subtree under specified node
+	*
+	* @access	public
+	* @param	array		node_data
+	* @param    boolean     with data: default is true otherwise this function return only a ref_id array
+	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
+	* @throws InvalidArgumentException
+	*/
+	function getSubTree($a_node,$a_with_data = true, $a_type = "")
+	{
+		$res = $this->getSubTreeRecursiveWithRoot($a_node);
+
+		if ($a_type !== "") {
+			if (!is_array($a_type)) {
+				$a_type = [$a_type];
+			}
+
+			$res = $this->getNodesFilteredByTypes($a_type, $res);
 		}
 
-		return $ids;
+		if (!$a_with_data) {
+			$res = $this->getIdsFromNodes($res);
+		}
+
+		return iterator_to_array($res);
+	}
+
+	protected function getSubTreeRecursiveWithRoot($root) {
+		yield $root;
+		foreach ($this->getSubTreeRecursive($root) as $node) {
+			yield $node;
+		}
 	}
 
 	protected function getSubTreeRecursive($node) {
-		$children = $this->getChilds($node);
+		$children = $this->getChilds($node["child"]);
 		foreach ($children as $child) {
+			// The "last" key is set on the last array entry by the original
+			// getChilds-implementation. The original getChildsByType-impl
+			// does not set that key. This is why I remove it here. I do not
+			// really know if this changes a thing.
+			if (isset($child["last"])) {
+				unset($child["last"]);
+			}
 			yield $child;
-			foreach ($this->getSubTreeRecursive($child["child"]) as $sub) {
+			foreach ($this->getSubTreeRecursive($child) as $sub) {
 				yield $sub;
+			}
+		}
+	}
+
+	protected function getIdsFromNodes($nodes) {
+		foreach ($nodes as $node) {
+			yield $node["child"];
+		}
+	}
+
+	protected function getNodesFilteredByTypes(array $types, $nodes) {
+		foreach ($nodes as $node) {
+			if (in_array($node["type"], $types)) {
+				yield $node;
 			}
 		}
 	}
@@ -549,20 +603,6 @@ class ilCachedTree extends ilTree
 	public function getFilteredSubTree($a_node_id,$a_filter = array())
 	{
 		return $this->other->getFilteredSubTree($a_node_id, $a_filter);
-	}
-
-	/**
-	* get all nodes in the subtree under specified node
-	*
-	* @access	public
-	* @param	array		node_data
-	* @param    boolean     with data: default is true otherwise this function return only a ref_id array
-	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
-	* @throws InvalidArgumentException
-	*/
-	function getSubTree($a_node,$a_with_data = true, $a_type = "")
-	{
-		return $this->other->getSubTree($a_node, $a_with_data, $a_type);
 	}
 
 	/**
