@@ -17,14 +17,152 @@ class ilCachedTree extends ilTree
 	protected $global_cache;
 
 	/**
+	 * @var \ilObjectDataCache
+	 */
+	protected $object_data_cache;
+
+	/**
+	 * @var \ilObjectDefinition
+	 */
+	protected $object_definition;
+
+	/**
+	 * @var \ilLanguage
+	 */
+	protected $language;
+
+	/**
 	* Constructor
 	*/
-	public function __construct(\ilTree $other, \ilGlobalCache $global_cache)
-	{
+	public function __construct(
+		\ilTree $other,
+		\ilGlobalCache $global_cache,
+		\ilObjectDataCache $object_data_cache,
+		\ilObjectDefinition $object_definition,
+		\ilLanguage $language
+	) {
 		$this->other = $other;
 		$this->global_cache = $global_cache;
+		$this->object_data_cache = $object_data_cache;
+		$this->object_definition = $object_definition;
+		$this->language = $language;
 	}
-	
+
+	//--------------------------------------
+	// CACHING
+	//--------------------------------------
+
+	/**
+	 * @var	array
+	 */
+	protected $cache;
+
+	protected function getCacheKey($node_id, $tree_id = null) {
+		if ($tree_id === null) {
+			$tree_id = $this->other->getTreeId();
+		}
+		return "node_".$tree_id."_".$node_id;
+	}
+
+	protected function purgeCache($node_id) {
+		$key = $this->getCacheKey($node_id);
+		unset($this->cache[$key]);
+		$this->global_cache->delete($key);
+
+		$path = $this->getPathFull($node_id);
+		foreach ($path as $node_id) {
+			$key = $this->getCacheKey($node_id);
+			unset($this->cache[$key]);
+			$this->global_cache->delete($key);
+		}
+	}
+
+	/**
+	* get child nodes of given node
+	* @access	public
+	* @param	integer		node_id
+	* @param	string		sort order of returned childs, optional (possible values: 'title','desc','last_update' or 'type')
+	* @param	string		sort direction, optional (possible values: 'DESC' or 'ASC'; defalut is 'ASC')
+	* @return	array		with node data of all childs or empty array
+	* @throws InvalidArgumentException
+	*/
+	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
+	{
+		if ($a_order !== "" || $a_direction !== "ASC") {
+			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
+		}
+
+		$key = $this->getCacheKey($a_node_id);
+		if (isset($this->cache[$a_node_id])) {
+			$data = $this->cache[$a_node_id];
+		}
+		else if ($this->global_cache->exists($key)) {
+			$data = $this->global_cache->get($key);
+			// this takes care of an cache quirk, where empty array is null
+			if ($data === null) {
+				$data = [];
+			}
+			$this->cache[$a_node_id] = $data;
+		}
+		else {
+			$data = $this->other->getChilds($a_node_id);
+			$this->cache[$a_node_id] = $data;
+			$this->global_cache->set($key, $data);
+		}
+
+		return $this->addCurrentObjectData($data);
+	}
+
+	protected function addCurrentObjectData(array $nodes) : array {
+		global $DIC;
+		$ilUser = $DIC["ilUser"];
+
+		$ids = $this->getObjIdsFromNodes($nodes);
+
+		$this->object_data_cache->preloadObjectCache($ids);
+
+		foreach($nodes as &$node) {
+			$obj_id = $node["obj_id"];
+
+			$type = $this->object_data_cache->lookupType($obj_id);
+			$node["type"] = $type;
+			$node["owner"] = $this->object_data_cache->lookupOwner($obj_id);
+			$node["last_update"] = $this->object_data_cache->lookupLastUpdate($obj_id);
+			$node["import_id"] = $this->object_data_cache->lookupImportId($obj_id);
+
+			// look into ilTree from where I copied this mess
+			$translation_type = $this->object_definition->getTranslationType($type);
+			if ($translation_type == "sys") {
+				if ($type == "rolf" && $node["obj_id"] !== ROLE_FOLDER_ID) {
+				}
+				else {
+					$node["title"] = $this->language->txt("obj_{$type}");
+					$node["description"] = $this->language->txt("obj_{$type}_desc");
+				}
+			}
+			else {
+				$node["title"] = $this->object_data_cache->lookupTitle($obj_id);
+				$node["description"] = $this->object_data_cache->lookupDescription($obj_id);
+			}
+
+			$node["desc"] = $node["description"];
+		}
+
+		return $nodes;
+	}
+
+	protected function getObjIdsFromNodes(array $nodes) : array {
+		$ids = [];
+		foreach($nodes as $node) {
+			$ids[] = $node["obj_id"];
+		}
+		return $ids;
+	}
+
+	//--------------------------------------
+	// FALLBACKS TO CACHELESS TREE
+	//--------------------------------------
+
 	/**
 	 * Init tree implementation
 	 */
@@ -238,67 +376,6 @@ class ilCachedTree extends ilTree
 	}
 
 	/**
-	* get child nodes of given node
-	* @access	public
-	* @param	integer		node_id
-	* @param	string		sort order of returned childs, optional (possible values: 'title','desc','last_update' or 'type')
-	* @param	string		sort direction, optional (possible values: 'DESC' or 'ASC'; defalut is 'ASC')
-	* @return	array		with node data of all childs or empty array
-	* @throws InvalidArgumentException
-	*/
-	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
-	{
-		if ($a_order !== "" || $a_direction !== "ASC") {
-			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
-		}
-
-		$key = $this->getCacheKey($a_node_id);
-		if (isset($this->cache[$a_node_id])) {
-			$data = $this->cache[$a_node_id];
-		}
-		else if ($this->global_cache->exists($key)) {
-			$data = $this->global_cache->get($key);
-			// this takes care of an cache quirk, where empty array is null
-			if ($data === null) {
-				$data = [];
-			}
-			$this->cache[$a_node_id] = $data;
-		}
-		else {
-			$data = $this->other->getChilds($a_node_id);
-			$this->cache[$a_node_id] = $data;
-			$this->global_cache->set($key, $data);
-		}
-
-		return $data;
-	}
-
-	/**
-	 * @var	array
-	 */
-	protected $cache;
-
-	protected function getCacheKey($node_id, $tree_id = null) {
-		if ($tree_id === null) {
-			$tree_id = $this->other->getTreeId();
-		}
-		return "node_".$tree_id."_".$node_id;
-	}
-
-	protected function purgeCache($node_id) {
-		$key = $this->getCacheKey($node_id);
-		unset($this->cache[$key]);
-		$this->global_cache->delete($key);
-
-		$path = $this->getPathFull($node_id);
-		foreach ($path as $node_id) {
-			$key = $this->getCacheKey($node_id);
-			unset($this->cache[$key]);
-			$this->global_cache->delete($key);
-		}
-	}
-
-	/**
 	* get child nodes of given node (exclude filtered obj_types)
 	* @access	public
 	* @param	array		objects to filter (e.g array('rolf'))
@@ -323,6 +400,7 @@ class ilCachedTree extends ilTree
 	*/
 	function getChildsByType($a_node_id,$a_type)
 	{
+		// TODO: cache me
 		return $this->other->getChildsByType($a_node_id, $a_type);
 	}
 
@@ -337,6 +415,7 @@ class ilCachedTree extends ilTree
 	*/
 	public function getChildsByTypeFilter($a_node_id,$a_types,$a_order = "",$a_direction = "ASC")
 	{
+		// TODO: Cache me!
 		return $this->other->getChildsByTypeFilter($a_node_id, $a_types, $a_order, $a_direction);
 	}
 	
@@ -398,6 +477,7 @@ class ilCachedTree extends ilTree
 	 */
 	public function getSubTreeIds($a_ref_id)
 	{
+		// TODO: Cache me!
 		return $this->other->getSubTreeIds($a_ref_id);
 	}
 	
@@ -426,6 +506,7 @@ class ilCachedTree extends ilTree
 	*/
 	function getSubTreeTypes($a_node,$a_filter = 0)
 	{
+		// TODO: Cache me!
 		return $this->other->getSubTreeTypes($a_node, $a_filter);
 	}
 
@@ -463,6 +544,7 @@ class ilCachedTree extends ilTree
 	*/
 	function getPathFull($a_endnode_id, $a_startnode_id = 0)
 	{
+		// TODO: Cache me
 		return $this->other->getPathFull($a_endnode_id, $a_startnode_id);
 	}
 	
@@ -489,6 +571,7 @@ class ilCachedTree extends ilTree
 	*/
 	public function getPathId($a_endnode_id, $a_startnode_id = 0)
 	{
+		// TODO: Cache me!
 		return $this->other->getPathId($a_endnode_id, $a_startnode_id);
 	}
 
@@ -534,6 +617,7 @@ class ilCachedTree extends ilTree
 	*/
 	function getNodePath($a_endnode_id, $a_startnode_id = 0)
 	{
+		// TODO: Cache me!
 		return $this->other->getNodePath($a_endnode_id, $a_startnode_id);
 	}
 	// END WebDAV: getNodePath function added
@@ -609,6 +693,7 @@ class ilCachedTree extends ilTree
 	function getNodeData($a_node_id, $a_tree_pk = null)
 	// END PATCH WebDAV: Pass tree id to this method
 	{
+		//TODO: Cache me
 		return $this->other->getNodeData($a_node_id, $a_tree_pk);
 	}
 	
@@ -644,6 +729,7 @@ class ilCachedTree extends ilTree
 	*/
 	function isInTree($a_node_id)
 	{
+		// TODO: Cache me
 		return $this->other->isInTree($a_node_id);
 	}
 
@@ -656,6 +742,7 @@ class ilCachedTree extends ilTree
 	*/
 	public function getParentNodeData($a_node_id)
 	{
+		// TODO: Cache me
 		return $this->other->getParentNodeData($a_node_id);
 	}
 
@@ -668,6 +755,7 @@ class ilCachedTree extends ilTree
 	*/
 	public function isGrandChild($a_startnode_id,$a_querynode_id)
 	{
+		// TODO: Cache me
 		return $this->other->isGrandChild($a_startnode_id, $a_querynode_id);
 	}
 
@@ -804,6 +892,7 @@ class ilCachedTree extends ilTree
 	*/
 	function getParentId($a_node_id)
 	{
+		// TODO: Cache me
 		return $this->other->getParentId($a_node_id);
 	}
 
@@ -946,6 +1035,7 @@ class ilCachedTree extends ilTree
 	*/
 	function checkForParentType($a_ref_id,$a_type,$a_exclude_source_check = false)
 	{
+		// TODO: Cache me
 		return $this->other->checkForParentType($a_ref_id, $a_type, $a_exclude_source_check);
 	}
 

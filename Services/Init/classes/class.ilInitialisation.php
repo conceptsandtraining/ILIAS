@@ -1231,7 +1231,13 @@ class ilInitialisation
 		$global_cache = ilGlobalCache::getInstance(ilGlobalCache::COMP_TREE);
 		if ($global_cache->isActive()) {
 			require_once "./Services/Tree/classes/class.ilCachedTree.php";
-			$tree = new ilCachedTree($tree, $global_cache);
+			$tree = new ilCachedTree(
+				$tree,
+				$global_cache,
+				$DIC["ilObjDataCache"],
+				$DIC["objDefinition"],
+				$DIC["lng"]
+			);
 		}
 		// cat-tms-patch end
 		self::initGlobal("tree", $tree);
