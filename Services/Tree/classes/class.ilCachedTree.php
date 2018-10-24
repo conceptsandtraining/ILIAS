@@ -248,6 +248,10 @@ class ilCachedTree extends ilTree
 	*/
 	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
 	{
+		if ($a_order !== "" || $a_direction !== "ASC") {
+			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
+		}
+
 		$key = $this->getCacheKey($a_node_id);
 		if (isset($this->cache[$a_node_id])) {
 			$data = $this->cache[$a_node_id];
@@ -264,24 +268,6 @@ class ilCachedTree extends ilTree
 			$data = $this->other->getChilds($a_node_id);
 			$this->cache[$a_node_id] = $data;
 			$this->global_cache->set($key, $data);
-		}
-
-		if ($a_order !== "") {
-			usort($data, function($l,$r) use ($a_order) {
-				$l = $l[$a_order];
-				$r = $r[$a_order];
-				if ($l == $r) {
-					return 0;
-				}
-				if ($l < $r) {
-					return -1;
-				}
-				return 1;
-			});
-		}
-
-		if ($a_direction !== "ASC") {
-			$data = array_reverse($data);
 		}
 
 		return $data;
