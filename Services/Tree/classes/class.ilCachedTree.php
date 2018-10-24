@@ -77,42 +77,6 @@ class ilCachedTree extends ilTree
 		}
 	}
 
-	/**
-	* get child nodes of given node
-	* @access	public
-	* @param	integer		node_id
-	* @param	string		sort order of returned childs, optional (possible values: 'title','desc','last_update' or 'type')
-	* @param	string		sort direction, optional (possible values: 'DESC' or 'ASC'; defalut is 'ASC')
-	* @return	array		with node data of all childs or empty array
-	* @throws InvalidArgumentException
-	*/
-	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
-	{
-		if ($a_order !== "" || $a_direction !== "ASC") {
-			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
-		}
-
-		$key = $this->getCacheKey($a_node_id);
-		if (isset($this->cache[$a_node_id])) {
-			$data = $this->cache[$a_node_id];
-		}
-		else if ($this->global_cache->exists($key)) {
-			$data = $this->global_cache->get($key);
-			// this takes care of an cache quirk, where empty array is null
-			if ($data === null) {
-				$data = [];
-			}
-			$this->cache[$a_node_id] = $data;
-		}
-		else {
-			$data = $this->other->getChilds($a_node_id);
-			$this->cache[$a_node_id] = $data;
-			$this->global_cache->set($key, $data);
-		}
-
-		return $this->addCurrentObjectData($data);
-	}
-
 	protected function addCurrentObjectData(array $nodes) : array {
 		global $DIC;
 		$ilUser = $DIC["ilUser"];
@@ -158,6 +122,76 @@ class ilCachedTree extends ilTree
 		}
 		return $ids;
 	}
+
+
+	//--------------------------------------
+	// CACHED METHODS
+	//--------------------------------------
+
+	/**
+	* get child nodes of given node
+	* @access	public
+	* @param	integer		node_id
+	* @param	string		sort order of returned childs, optional (possible values: 'title','desc','last_update' or 'type')
+	* @param	string		sort direction, optional (possible values: 'DESC' or 'ASC'; defalut is 'ASC')
+	* @return	array		with node data of all childs or empty array
+	* @throws InvalidArgumentException
+	*/
+	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
+	{
+		if ($a_order !== "" || $a_direction !== "ASC") {
+			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
+		}
+
+		$key = $this->getCacheKey($a_node_id);
+		if (isset($this->cache[$a_node_id])) {
+			$data = $this->cache[$a_node_id];
+		}
+		else if ($this->global_cache->exists($key)) {
+			$data = $this->global_cache->get($key);
+			// this takes care of an cache quirk, where empty array is null
+			if ($data === null) {
+				$data = [];
+			}
+			$this->cache[$a_node_id] = $data;
+		}
+		else {
+			$data = $this->other->getChilds($a_node_id);
+			$this->cache[$a_node_id] = $data;
+			$this->global_cache->set($key, $data);
+		}
+
+		return $this->addCurrentObjectData($data);
+	}
+
+
+	/**
+	* get child nodes of given node by object type
+	* @access	public
+	* @param	integer		node_id
+	* @param	string		object type
+	* @return	array		with node data of all childs or empty array
+	* @throws InvalidArgumentException
+	*/
+	function getChildsByType($a_node_id,$a_type)
+	{
+		$children = $this->getChilds($a_node_id);
+		$nodes = [];
+		foreach ($children as $node) {
+			if ($node["type"] == $a_type) {
+				// The "last" key is set on the last array entry by the original
+				// getChilds-implementation. The original getChildsByType-impl
+				// does not set that key. This is why I remove it here. I do not
+				// really know if this changes a thing.
+				if (isset($node["last"])) {
+					unset($node["last"]);
+				}
+				$nodes[] = $node;
+			}
+		}
+		return $nodes;
+	}
+
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -387,21 +421,6 @@ class ilCachedTree extends ilTree
 	function getFilteredChilds($a_filter,$a_node,$a_order = "",$a_direction = "ASC")
 	{
 		return $this->other->getFilteredChilds($a_filter, $a_node, $a_order, $a_direction);
-	}
-
-
-	/**
-	* get child nodes of given node by object type
-	* @access	public
-	* @param	integer		node_id
-	* @param	string		object type
-	* @return	array		with node data of all childs or empty array
-	* @throws InvalidArgumentException
-	*/
-	function getChildsByType($a_node_id,$a_type)
-	{
-		// TODO: cache me
-		return $this->other->getChildsByType($a_node_id, $a_type);
 	}
 
 
