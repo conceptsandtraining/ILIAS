@@ -46,6 +46,10 @@ class ilCachedTree extends ilTree
 		$this->object_data_cache = $object_data_cache;
 		$this->object_definition = $object_definition;
 		$this->language = $language;
+
+		if ($this->other->getTreeImplementation() instanceof \ilNestedSetTree) {
+			throw new \LogicException("ilCachedTree only works with ilMaterializedPathTree");
+		}
 	}
 
 	//--------------------------------------
