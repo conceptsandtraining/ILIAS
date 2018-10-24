@@ -164,7 +164,6 @@ class ilCachedTree extends ilTree
 		return $this->addCurrentObjectData($data);
 	}
 
-
 	/**
 	* get child nodes of given node by object type
 	* @access	public
@@ -192,6 +191,37 @@ class ilCachedTree extends ilTree
 		return $nodes;
 	}
 
+	/**
+	* get child nodes of given node by object type
+	* @access	public
+	* @param	integer		node_id
+	* @param	array		array of object type
+	* @return	array		with node data of all childs or empty array
+	* @throws InvalidArgumentException
+	*/
+	public function getChildsByTypeFilter($a_node_id,$a_types,$a_order = "",$a_direction = "ASC")
+	{
+		if ($a_order !== "" || $a_direction !== "ASC") {
+			return $this->other->getChildsByTypeFilter($a_node_id, $a_types, $a_order, $a_direction);
+		}
+
+		$children = $this->getChilds($a_node_id);
+		$nodes = [];
+		foreach($children as $node) {
+			if (in_array($node["type"], $a_types)) {
+				// The "last" key is set on the last array entry by the original
+				// getChilds-implementation. The original getChildsByType-impl
+				// does not set that key. This is why I remove it here. I do not
+				// really know if this changes a thing.
+				if (isset($node["last"])) {
+					unset($node["last"]);
+				}
+				$nodes[] = $node;
+			}
+		}
+
+		return $nodes;
+	}
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -421,21 +451,6 @@ class ilCachedTree extends ilTree
 	function getFilteredChilds($a_filter,$a_node,$a_order = "",$a_direction = "ASC")
 	{
 		return $this->other->getFilteredChilds($a_filter, $a_node, $a_order, $a_direction);
-	}
-
-
-	/**
-	* get child nodes of given node by object type
-	* @access	public
-	* @param	integer		node_id
-	* @param	array		array of object type
-	* @return	array		with node data of all childs or empty array
-	* @throws InvalidArgumentException
-	*/
-	public function getChildsByTypeFilter($a_node_id,$a_types,$a_order = "",$a_direction = "ASC")
-	{
-		// TODO: Cache me!
-		return $this->other->getChildsByTypeFilter($a_node_id, $a_types, $a_order, $a_direction);
 	}
 	
 	/**
