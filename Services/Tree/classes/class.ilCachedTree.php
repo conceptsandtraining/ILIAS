@@ -59,26 +59,51 @@ class ilCachedTree extends ilTree
 	/**
 	 * @var	array
 	 */
-	protected $cache;
+	protected $cache = [];
 
-	protected function getCacheKey($node_id, $tree_id = null) {
-		if ($tree_id === null) {
-			$tree_id = $this->other->getTreeId();
-		}
+	protected function getCacheKey($node_id) {
+		$tree_id = $this->other->getTreeId();
+
 		return "node_".$tree_id."_".$node_id;
 	}
 
+	protected function setCacheValue($key, $data) {
+		$this->cache[$key] = $data;
+		$this->global_cache->set($key, $data);
+	}
+
+	protected function getCacheValue($key) {
+		$data = null;
+		if (isset($this->cache[$key])) {
+			$data = $this->cache[$key];
+		}
+		else if ($this->global_cache->exists($key)) {
+			$data = $this->global_cache->get($key);
+			// this takes care of an cache quirk, where empty array is null
+			if ($data === null) {
+				$data = [];
+			}
+			$this->cache[$a_node_id] = $data;
+		}
+		return $data;
+	}
+
 	protected function purgeCache($node_id) {
+		$path = $this->getPathFull($node_id);
+
 		$key = $this->getCacheKey($node_id);
 		unset($this->cache[$key]);
 		$this->global_cache->delete($key);
 
-		$path = $this->getPathFull($node_id);
-		foreach ($path as $node_id) {
-			$key = $this->getCacheKey($node_id);
+		foreach ($path as $node) {
+			$key = $this->getCacheKey($node["child"]);
 			unset($this->cache[$key]);
 			$this->global_cache->delete($key);
 		}
+	}
+
+	protected function purgeAll() {
+		$this->global_cache->flush();
 	}
 
 	protected function addCurrentObjectData(array $nodes) : array {
@@ -148,21 +173,10 @@ class ilCachedTree extends ilTree
 		}
 
 		$key = $this->getCacheKey($a_node_id);
-		if (isset($this->cache[$a_node_id])) {
-			$data = $this->cache[$a_node_id];
-		}
-		else if ($this->global_cache->exists($key)) {
-			$data = $this->global_cache->get($key);
-			// this takes care of an cache quirk, where empty array is null
-			if ($data === null) {
-				$data = [];
-			}
-			$this->cache[$a_node_id] = $data;
-		}
-		else {
+		$data = $this->getCacheValue($key);
+		if ($data === null) {
 			$data = $this->other->getChilds($a_node_id);
-			$this->cache[$a_node_id] = $data;
-			$this->global_cache->set($key, $data);
+			$this->setCacheValue($key, $data);
 		}
 
 		return $this->addCurrentObjectData($data);
@@ -1057,7 +1071,7 @@ class ilCachedTree extends ilTree
 	*/
 	function renumber($node_id = 1, $i = 1)
 	{
-		$this->purgeCache($node_id);
+		$this->purgeAll();
 		return $this->other->renumber($node_id, $i);
 	}
 
@@ -1073,7 +1087,7 @@ class ilCachedTree extends ilTree
 	*/
 	function __renumber($node_id = 1, $i = 1)
 	{
-		$this->purgeCache($node_id);
+		$this->purgeAll();
 		return $this->other->__renumber($node_id, $i);
 	}
 
