@@ -491,6 +491,18 @@ class ilCachedTree extends ilTree
 		return false;
 	}
 
+	/**
+	* get parent id of given node
+	* @access	public
+	* @param	integer	node id
+	* @return	integer	parent id
+	* @throws InvalidArgumentException
+	*/
+	function getParentId($a_node_id)
+	{
+		return $this->getNodeData($a_node_id)["parent"];
+	}
+
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -1055,19 +1067,6 @@ class ilCachedTree extends ilTree
 	function getSavedNodeObjIds(array $a_obj_ids)
 	{
 		return $this->other->getSavedNodeObjIds($a_obj_ids);
-	}
-
-	/**
-	* get parent id of given node
-	* @access	public
-	* @param	integer	node id
-	* @return	integer	parent id
-	* @throws InvalidArgumentException
-	*/
-	function getParentId($a_node_id)
-	{
-		// TODO: Cache me
-		return $this->other->getParentId($a_node_id);
 	}
 
 	/**
