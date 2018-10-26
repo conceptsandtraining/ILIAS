@@ -472,6 +472,25 @@ class ilCachedTree extends ilTree
 		return $this->getNodeData($node["parent"]);
 	}
 
+	/**
+	* checks if a node is in the path of an other node
+	* @access	public
+	* @param	integer		object id of start node
+	* @param    integer     object id of query node
+	* @return	integer		number of entries
+	*/
+	public function isGrandChild($a_startnode_id,$a_querynode_id)
+	{
+		$node = $this->getNodeData($a_querynode_id);
+		while ($node["parent"] != 0) {
+			if ($node["parent"] == $a_startnode_id) {
+				return true;
+			}
+			$node = $this->getNodeData($node["parent"]);
+		}
+		return false;
+	}
+
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -912,19 +931,6 @@ class ilCachedTree extends ilTree
 	protected function fetchTranslationFromObjectDataCache($a_obj_ids)
 	{
 		return $this->other->fetchTranslationFromObjectDataCache($a_obj_ids);
-	}
-
-	/**
-	* checks if a node is in the path of an other node
-	* @access	public
- 	* @param	integer		object id of start node
-	* @param    integer     object id of query node
-	* @return	integer		number of entries
-	*/
-	public function isGrandChild($a_startnode_id,$a_querynode_id)
-	{
-		// TODO: Cache me
-		return $this->other->isGrandChild($a_startnode_id, $a_querynode_id);
 	}
 
 	/**
