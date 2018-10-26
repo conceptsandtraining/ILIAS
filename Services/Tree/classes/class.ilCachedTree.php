@@ -387,6 +387,26 @@ class ilCachedTree extends ilTree
 		return array_reverse($res);
 	}
 
+	/**
+	* get path from a given startnode to a given endnode
+	* if startnode is not given the rootnode is startnode
+	* @access	public
+	* @param	integer		node_id of endnode
+	* @param	integer		node_id of startnode (optional)
+	* @return	array		all path ids from startnode to endnode
+	* @throws InvalidArgumentException
+	*/
+	public function getPathId($a_endnode_id, $a_startnode_id = 0)
+	{
+		$path = $this->getPathFull($a_endnode_id, $a_startnode_id);
+		$res = [];
+		foreach ($path as $node) {
+			$res[] = $node["child"];
+		}
+		return $res;
+	}
+
+
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
 	//--------------------------------------
@@ -699,21 +719,6 @@ class ilCachedTree extends ilTree
 	function preloadDepthParent($a_node_ids)
 	{
 		return $this->other->preloadDepthParent($a_node_ids);
-	}
-
-	/**
-	* get path from a given startnode to a given endnode
-	* if startnode is not given the rootnode is startnode
-	* @access	public
-	* @param	integer		node_id of endnode
-	* @param	integer		node_id of startnode (optional)
-	* @return	array		all path ids from startnode to endnode
-	* @throws InvalidArgumentException
-	*/
-	public function getPathId($a_endnode_id, $a_startnode_id = 0)
-	{
-		// TODO: Cache me!
-		return $this->other->getPathId($a_endnode_id, $a_startnode_id);
 	}
 
 	// BEGIN WebDAV: getNodePathForTitlePath function added
