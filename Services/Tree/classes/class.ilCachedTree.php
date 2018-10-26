@@ -59,23 +59,28 @@ class ilCachedTree extends ilTree
 	/**
 	 * @var	array
 	 */
-	protected $cache = [];
+	protected $children_cache = [];
 
-	protected function getCacheKey($node_id) {
+	/**
+	 * @var array
+	 */
+	protected $data_cache = [];
+
+	protected function getChildsCacheKey($node_id) {
 		$tree_id = $this->other->getTreeId();
 
-		return "node_".$tree_id."_".$node_id;
+		return "node_{$tree_id}_{$node_id}_children";
 	}
 
 	protected function setCacheValue($key, $data) {
-		$this->cache[$key] = $data;
+		$this->children_cache[$key] = $data;
 		$this->global_cache->set($key, $data);
 	}
 
 	protected function getCacheValue($key) {
 		$data = null;
-		if (isset($this->cache[$key])) {
-			$data = $this->cache[$key];
+		if (isset($this->children_cache[$key])) {
+			$data = $this->children_cache[$key];
 		}
 		else if ($this->global_cache->exists($key)) {
 			$data = $this->global_cache->get($key);
@@ -83,7 +88,7 @@ class ilCachedTree extends ilTree
 			if ($data === null) {
 				$data = [];
 			}
-			$this->cache[$a_node_id] = $data;
+			$this->children_cache[$a_node_id] = $data;
 		}
 		return $data;
 	}
@@ -91,12 +96,13 @@ class ilCachedTree extends ilTree
 	protected function purgeCache($node_id) {
 		$path = $this->getPathFull($node_id);
 
-		$key = $this->getCacheKey($node_id);
-		unset($this->cache[$key]);
+
+		$key = $this->getChildsCacheKey($node_id);
+		unset($this->children_cache[$key]);
 		$this->global_cache->delete($key);
 
 		foreach ($path as $node) {
-			$key = $this->getCacheKey($node["child"]);
+			$key = $this->getChildsCacheKey($node["child"]);
 			unset($this->cache[$key]);
 			$this->global_cache->delete($key);
 		}
@@ -172,7 +178,7 @@ class ilCachedTree extends ilTree
 			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
 		}
 
-		$key = $this->getCacheKey($a_node_id);
+		$key = $this->getChildsCacheKey($a_node_id);
 		$data = $this->getCacheValue($key);
 		if ($data === null) {
 			$data = $this->other->getChilds($a_node_id);
