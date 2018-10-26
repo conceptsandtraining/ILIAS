@@ -96,11 +96,12 @@ class ilCachedTree extends ilTree
 	protected function purgeCache($node_id) {
 		$path = $this->getPathFull($node_id);
 
-
 		$key = $this->getChildsCacheKey($node_id);
 		unset($this->children_cache[$key]);
 		$this->global_cache->delete($key);
 
+		// TODO: It might be enough to just purge the children
+		// of parent.
 		foreach ($path as $node) {
 			$key = $this->getChildsCacheKey($node["child"]);
 			unset($this->cache[$key]);
