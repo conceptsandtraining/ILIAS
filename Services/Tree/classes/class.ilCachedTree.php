@@ -305,7 +305,6 @@ class ilCachedTree extends ilTree
 		);
 	}
 
-
 	protected function getSubTreeRecursiveWithRoot($root) {
 		yield $root;
 		foreach ($this->getSubTreeRecursive($root) as $node) {
@@ -362,6 +361,31 @@ class ilCachedTree extends ilTree
 		}
 	}
 
+	/**
+	* get path from a given startnode to a given endnode
+	* if startnode is not given the rootnode is startnode.
+	* This function chooses the algorithm to be used.
+	*
+	* @access	public
+	* @param	integer	node_id of endnode
+	* @param	integer	node_id of startnode (optional)
+	* @return	array	ordered path info (id,title,parent) from start to end
+	*/
+	function getPathFull($a_endnode_id, $a_startnode_id = 0)
+	{
+		$node = $this->getNodeData($a_endnode_id);
+		$res = [$node];
+		while ($node["child"] != $a_startnode_id && $node["parent"] != 0) {
+			$node = $this->getNodeData($node["parent"]);
+			$res[] = $node;
+		}
+
+		if ($a_startnode_id != 0 && $node["child"] != $a_startnode_id) {
+			return [];
+		}
+
+		return array_reverse($res);
+	}
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -665,23 +689,6 @@ class ilCachedTree extends ilTree
 	{
 		return $this->other->validateParentRelations();
 	}
-
-	/**
-	* get path from a given startnode to a given endnode
-	* if startnode is not given the rootnode is startnode.
-	* This function chooses the algorithm to be used.
-	*
-	* @access	public
-	* @param	integer	node_id of endnode
-	* @param	integer	node_id of startnode (optional)
-	* @return	array	ordered path info (id,title,parent) from start to end
-	*/
-	function getPathFull($a_endnode_id, $a_startnode_id = 0)
-	{
-		// TODO: Cache me
-		return $this->other->getPathFull($a_endnode_id, $a_startnode_id);
-	}
-	
 
 	/**
 	 * Preload depth/parent
