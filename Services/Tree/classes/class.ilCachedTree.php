@@ -275,7 +275,7 @@ class ilCachedTree extends ilTree
 				$a_type = [$a_type];
 			}
 
-			$res = $this->getNodesFilteredByTypes($a_type, $res);
+			$res = $this->getNodesWithTypes($a_type, $res);
 		}
 
 		if (!$a_with_data) {
@@ -284,6 +284,27 @@ class ilCachedTree extends ilTree
 
 		return iterator_to_array($res);
 	}
+
+	/**
+	* get types of nodes in the subtree under specified node
+	*
+	* @access	public
+	* @param	array		node_id
+	* @param	array		object types to filter e.g array('rolf')
+	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
+	*/
+	function getSubTreeTypes($a_node_id,$a_filter = 0)
+	{
+		$node = $this->getNodeData($a_node_id);
+		$nodes = $this->getSubTreeRecursiveWithRoot($node);
+		if ($a_filter !== 0) {
+			$nodes = $this->getNodesWithoutTypes($a_filter, $nodes);
+		}
+		return iterator_to_array(
+			$this->getTypesFromNodes($nodes)
+		);
+	}
+
 
 	protected function getSubTreeRecursiveWithRoot($root) {
 		yield $root;
@@ -315,10 +336,28 @@ class ilCachedTree extends ilTree
 		}
 	}
 
-	protected function getNodesFilteredByTypes(array $types, $nodes) {
+	protected function getNodesWithTypes(array $types, $nodes) {
 		foreach ($nodes as $node) {
 			if (in_array($node["type"], $types)) {
 				yield $node;
+			}
+		}
+	}
+
+	protected function getNodesWithoutTypes(array $types, $nodes) {
+		foreach ($nodes as $node) {
+			if (!in_array($node["type"], $types)) {
+				yield $node;
+			}
+		}
+	}
+
+	protected function getTypesFromNodes($nodes) {
+		$seen_types = [];
+		foreach ($nodes as $node) {
+			if (!in_array($node["type"], $seen_types)) {
+				$seen_types[] = $node["type"];
+				yield $node["type"];
 			}
 		}
 	}
@@ -603,20 +642,6 @@ class ilCachedTree extends ilTree
 	public function getFilteredSubTree($a_node_id,$a_filter = array())
 	{
 		return $this->other->getFilteredSubTree($a_node_id, $a_filter);
-	}
-
-	/**
-	* get types of nodes in the subtree under specified node
-	*
-	* @access	public
-	* @param	array		node_id
-	* @param	array		object types to filter e.g array('rolf')
-	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
-	*/
-	function getSubTreeTypes($a_node,$a_filter = 0)
-	{
-		// TODO: Cache me!
-		return $this->other->getSubTreeTypes($a_node, $a_filter);
 	}
 
 	/**
