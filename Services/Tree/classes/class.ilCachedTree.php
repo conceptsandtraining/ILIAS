@@ -503,6 +503,36 @@ class ilCachedTree extends ilTree
 		return $this->getNodeData($a_node_id)["parent"];
 	}
 
+	/**
+	* Check for parent type
+	* e.g check if a folder (ref_id 3) is in a parent course obj => checkForParentType(3,'crs');
+	*
+	* @access	public
+	* @param	integer	ref_id
+	* @param	string type
+	* @return	mixed false if item is not in tree,
+	* 				  int (object ref_id) > 0 if path container course, int 0 if pathc does not contain the object type 
+	*/
+	function checkForParentType($a_ref_id,$a_type,$a_exclude_source_check = false)
+	{
+		if (!$this->isInTree($a_ref_id)) {
+			return false;
+		}
+
+		$node = $this->getNodeData($a_ref_id);
+		if ($a_exclude_source_check && $node["parent"] != 0) {
+			$node = $this->getNodeData($node["parent"]);
+		}
+		while ($node["parent"] != 0) {
+			if ($node["type"] == $a_type) {
+				return $node["child"];
+			}
+			$node = $this->getNodeData($node["parent"]);
+		}
+
+		return 0;
+	}
+
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -1193,23 +1223,6 @@ class ilCachedTree extends ilTree
 	{
 		$this->purgeAll();
 		return $this->other->__renumber($node_id, $i);
-	}
-
-
-	/**
-	* Check for parent type
-	* e.g check if a folder (ref_id 3) is in a parent course obj => checkForParentType(3,'crs');
-	*
- 	* @access	public
-	* @param	integer	ref_id
-	* @param	string type
-	* @return	mixed false if item is not in tree, 
-	* 				  int (object ref_id) > 0 if path container course, int 0 if pathc does not contain the object type 
-	*/
-	function checkForParentType($a_ref_id,$a_type,$a_exclude_source_check = false)
-	{
-		// TODO: Cache me
-		return $this->other->checkForParentType($a_ref_id, $a_type, $a_exclude_source_check);
 	}
 
 	/**
