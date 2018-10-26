@@ -456,6 +456,23 @@ class ilCachedTree extends ilTree
 		return $this->hasCachedInfo($node_id) || $this->other->isInTree($a_node_id);
 	}
 
+	/**
+	* get data of parent node from tree and object_data
+	* @access	public
+	* @param	integer		node id
+	* @return	array
+	* @throws InvalidArgumentException
+	*/
+	public function getParentNodeData($a_node_id)
+	{
+		$node = $this->getNodeData($a_node_id);
+		if ($node["parent"] == 0) {
+			return [ "desc" => "" ]; // some random (?) edge case behaviour for root
+		}
+		return $this->getNodeData($node["parent"]);
+	}
+
+
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
 	//--------------------------------------
@@ -895,19 +912,6 @@ class ilCachedTree extends ilTree
 	protected function fetchTranslationFromObjectDataCache($a_obj_ids)
 	{
 		return $this->other->fetchTranslationFromObjectDataCache($a_obj_ids);
-	}
-
-	/**
-	* get data of parent node from tree and object_data
-	* @access	public
- 	* @param	integer		node id
-	* @return	array
-	* @throws InvalidArgumentException
-	*/
-	public function getParentNodeData($a_node_id)
-	{
-		// TODO: Cache me
-		return $this->other->getParentNodeData($a_node_id);
 	}
 
 	/**
