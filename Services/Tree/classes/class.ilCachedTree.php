@@ -68,10 +68,10 @@ class ilCachedTree extends ilTree
 
 	protected function getCachedChildren($node_id) {
 		$key = $this->getChildrenCacheKey($node_id);
-		$data = $this->getCacheValue($key);
+		$data = $this->getChildrenCacheValue($key);
 		if ($data === null) {
 			$data = $this->other->getChilds($node_id);
-			$this->setCacheValue($key, $data);
+			$this->setChildrenCacheValue($key, $data);
 		}
 		return $data;
 	}
@@ -82,26 +82,64 @@ class ilCachedTree extends ilTree
 		return "node_{$tree_id}_{$node_id}_children";
 	}
 
-	protected function setCacheValue($key, $data) {
+	protected function setChildrenCacheValue($key, $data) {
 		$this->children_cache[$key] = $data;
 		$this->global_cache->set($key, $data);
 	}
 
-	protected function getCacheValue($key) {
+	protected function getChildrenCacheValue($key) {
 		$data = null;
 		if (isset($this->children_cache[$key])) {
 			$data = $this->children_cache[$key];
 		}
 		else if ($this->global_cache->exists($key)) {
 			$data = $this->global_cache->get($key);
-			// this takes care of an cache quirk, where empty array is null
+			// this takes care of a cache quirk, where empty array is null
 			if ($data === null) {
 				$data = [];
 			}
-			$this->children_cache[$a_node_id] = $data;
+			$this->children_cache[$key] = $data;
 		}
 		return $data;
 	}
+
+	protected function getCachedData($node_id) {
+		$key = $this->getDataCacheKey($node_id);
+		$data = $this->getDataCacheValue($key);
+		if ($data === null) {
+			$data = $this->other->getNodeData($node_id);
+			$this->setDataCacheValue($key, $data);
+		}
+		return $data;
+	}
+
+	protected function getDataCacheKey($node_id) {
+		$tree_id = $this->other->getTreeId();
+
+		return "node_{$tree_id}_{$node_id}_data";
+	}
+
+	protected function setDataCacheValue($key, $data) {
+		$this->data_cache[$key] = $data;
+		$this->global_cache->set($key, $data);
+	}
+
+	protected function getDataCacheValue($key) {
+		$data = null;
+		if (isset($this->data_cache[$key])) {
+			$data = $this->data_cache[$key];
+		}
+		else if ($this->global_cache->exists($key)) {
+			$data = $this->global_cache->get($key);
+			// this takes care of a cache quirk, where empty array is null
+			if ($data === null) {
+				$data = [];
+			}
+			$this->data_cache[$key] = $data;
+		}
+		return $data;
+	}
+
 
 	protected function purgeCache($node_id) {
 		$path = $this->getPathFull($node_id);
@@ -109,6 +147,10 @@ class ilCachedTree extends ilTree
 		$key = $this->getChildrenCacheKey($node_id);
 		unset($this->children_cache[$key]);
 		$this->global_cache->delete($key);
+
+		$key = $this->getDataCacheKey($node_id);
+		unset($this->data_cache[$key]);
+		$this->global_cache->delete[$key];
 
 		// TODO: It might be enough to just purge the children
 		// of parent.
@@ -418,6 +460,22 @@ class ilCachedTree extends ilTree
 		return $res;
 	}
 
+	/**
+	* get all information of a node.
+	* get data of a specific node from tree and object_data
+	* @access	public
+	* @param	integer		node id
+	* @return	array		2-dim (int/str) node_data
+	* @throws InvalidArgumentException
+	*/
+	function getNodeData($a_node_id, $a_tree_pk = null)
+	{
+		if (!is_null($a_tree_pk)) {
+			return $this->getNodeData($a_node_id, $a_tree_pk);
+		}
+		return $this->getCachedData($a_node_id);
+		return $this->other->getNodeData($a_node_id, $a_tree_pk);
+	}
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -837,23 +895,6 @@ class ilCachedTree extends ilTree
 		return $this->other->getNodeTreeData($a_node_id);
 	}
 
-
-	/**
-	* get all information of a node.
-	* get data of a specific node from tree and object_data
-	* @access	public
-	* @param	integer		node id
-	* @return	array		2-dim (int/str) node_data
-	* @throws InvalidArgumentException
-	*/
-	// BEGIN WebDAV: Pass tree id to this method
-	//function getNodeData($a_node_id)
-	function getNodeData($a_node_id, $a_tree_pk = null)
-	// END PATCH WebDAV: Pass tree id to this method
-	{
-		//TODO: Cache me
-		return $this->other->getNodeData($a_node_id, $a_tree_pk);
-	}
 	
 	/**
 	* get data of parent node from tree and object_data
