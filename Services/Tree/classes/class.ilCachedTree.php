@@ -59,103 +59,67 @@ class ilCachedTree extends ilTree
 	/**
 	 * @var	array
 	 */
-	protected $children_cache = [];
-
-	/**
-	 * @var array
-	 */
-	protected $data_cache = [];
+	protected $cache = [];
 
 	protected function getCachedChildren($node_id) {
-		$key = $this->getChildrenCacheKey($node_id);
-		$data = $this->getChildrenCacheValue($key);
+		$key = $this->getCacheKey($node_id);
+		$data = $this->getCacheValue($key);
 		if ($data === null) {
-			$data = $this->other->getChilds($node_id);
-			$this->setChildrenCacheValue($key, $data);
+			$this->initCacheFor($node_id);
+			return $this->getCachedChildren($node_id);
 		}
-		return $data;
-	}
-
-	protected function getChildrenCacheKey($node_id) {
-		$tree_id = $this->other->getTreeId();
-
-		return "node_{$tree_id}_{$node_id}_children";
-	}
-
-	protected function setChildrenCacheValue($key, $data) {
-		$this->children_cache[$key] = $data;
-		$this->global_cache->set($key, $data);
-	}
-
-	protected function getChildrenCacheValue($key) {
-		$data = null;
-		if (isset($this->children_cache[$key])) {
-			$data = $this->children_cache[$key];
-		}
-		else if ($this->global_cache->exists($key)) {
-			$data = $this->global_cache->get($key);
-			// this takes care of a cache quirk, where empty array is null
-			if ($data === null) {
-				$data = [];
-			}
-			$this->children_cache[$key] = $data;
-		}
-		return $data;
+		return $data["children"];
 	}
 
 	protected function getCachedData($node_id) {
-		$key = $this->getDataCacheKey($node_id);
-		$data = $this->getDataCacheValue($key);
+		$key = $this->getCacheKey($node_id);
+		$data = $this->getCacheValue($key);
 		if ($data === null) {
-			$data = $this->other->getNodeData($node_id);
-			$this->setDataCacheValue($key, $data);
+			$this->initCacheFor($node_id);
+			return $this->getCachedData($node_id);
 		}
-		return $data;
+		return $data["data"];
 	}
 
-	protected function getDataCacheKey($node_id) {
-		$tree_id = $this->other->getTreeId();
-
-		return "node_{$tree_id}_{$node_id}_data";
-	}
-
-	protected function setDataCacheValue($key, $data) {
-		$this->data_cache[$key] = $data;
+	protected function initCacheFor($node_id) {
+		$key = $this->getCacheKey($node_id);
+		$data = [
+			"children" => $this->other->getChilds($node_id),
+			"data" => $this->other->getNodeData($node_id)
+		];
+		$this->cache[$key] = $data;
 		$this->global_cache->set($key, $data);
 	}
 
-	protected function getDataCacheValue($key) {
+	protected function getCacheKey($node_id) {
+		$tree_id = $this->other->getTreeId();
+
+		return "node_{$tree_id}_{$node_id}";
+	}
+
+	protected function getCacheValue($key) {
 		$data = null;
-		if (isset($this->data_cache[$key])) {
-			$data = $this->data_cache[$key];
+		if (isset($this->cache[$key])) {
+			$data = $this->cache[$key];
 		}
 		else if ($this->global_cache->exists($key)) {
 			$data = $this->global_cache->get($key);
-			// this takes care of a cache quirk, where empty array is null
-			if ($data === null) {
-				$data = [];
-			}
-			$this->data_cache[$key] = $data;
+			$this->cache[$key] = $data;
 		}
 		return $data;
 	}
-
 
 	protected function purgeCache($node_id) {
 		$path = $this->getPathFull($node_id);
 
-		$key = $this->getChildrenCacheKey($node_id);
-		unset($this->children_cache[$key]);
+		$key = $this->getCacheKey($node_id);
+		unset($this->cache[$key]);
 		$this->global_cache->delete($key);
-
-		$key = $this->getDataCacheKey($node_id);
-		unset($this->data_cache[$key]);
-		$this->global_cache->delete[$key];
 
 		// TODO: It might be enough to just purge the children
 		// of parent.
 		foreach ($path as $node) {
-			$key = $this->getChildrenCacheKey($node["child"]);
+			$key = $this->getCacheKey($node["child"]);
 			unset($this->cache[$key]);
 			$this->global_cache->delete($key);
 		}
