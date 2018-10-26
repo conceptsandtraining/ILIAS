@@ -81,6 +81,11 @@ class ilCachedTree extends ilTree
 		return $data["data"];
 	}
 
+	protected function hasCachedInfo($node_id) {
+		$key = $this->getCacheKey($node_id);
+		return isset($this->cache[$key]) || $this->global_cache->exists($key);
+	}
+
 	protected function initCacheFor($node_id) {
 		$key = $this->getCacheKey($node_id);
 		$data = [
@@ -258,7 +263,6 @@ class ilCachedTree extends ilTree
 
 		return $nodes;
 	}
-
 
 	/**
 	 * Get all ids of subnodes
@@ -438,7 +442,18 @@ class ilCachedTree extends ilTree
 			return $this->getNodeData($a_node_id, $a_tree_pk);
 		}
 		return $this->getCachedData($a_node_id);
-		return $this->other->getNodeData($a_node_id, $a_tree_pk);
+	}
+
+	/**
+	* get all information of a node.
+	* get data of a specific node from tree and object_data
+	* @access	public
+	* @param	integer		node id
+	* @return	boolean		true, if node id is in tree
+	*/
+	function isInTree($a_node_id)
+	{
+		return $this->hasCachedInfo($node_id) || $this->other->isInTree($a_node_id);
 	}
 
 	//--------------------------------------
@@ -755,6 +770,27 @@ class ilCachedTree extends ilTree
 		return $this->other->preloadDepthParent($a_node_ids);
 	}
 
+	/**
+	* Returns the node path for the specified object reference.
+	*
+	* Note: this function returns the same result as getNodePathForTitlePath,
+	* but takes ref-id's as parameters.
+	*
+	* This function differs from getPathFull, in the following aspects:
+	* - The title of an object is not translated into the language of the user
+	* - This function is significantly faster than getPathFull.
+	*
+	* @access	public
+	* @param	integer	node_id of endnode
+	* @param	integer	node_id of startnode (optional)
+	* @return	array	ordered path info (depth,parent,child,obj_id,type,title)
+	*               or null, if the node_id can not be converted into a node path.
+	*/
+	function getNodePath($a_endnode_id, $a_startnode_id = 0)
+	{
+		return $this->other->getNodePath($a_endnode_id, $a_startnode_id);
+	}
+
 	// BEGIN WebDAV: getNodePathForTitlePath function added
 	/**
 	* Converts a path consisting of object titles into a path consisting of tree
@@ -779,27 +815,6 @@ class ilCachedTree extends ilTree
 	}
 	// END WebDAV: getNodePathForTitlePath function added
 	// END WebDAV: getNodePath function added
-	/**
-	* Returns the node path for the specified object reference.
-	*
-	* Note: this function returns the same result as getNodePathForTitlePath, 
-	* but takes ref-id's as parameters.
-	*
-	* This function differs from getPathFull, in the following aspects:
-	* - The title of an object is not translated into the language of the user
-	* - This function is significantly faster than getPathFull.
-	*
-	* @access	public
-	* @param	integer	node_id of endnode
-	* @param	integer	node_id of startnode (optional)
-	* @return	array	ordered path info (depth,parent,child,obj_id,type,title)
-	*               or null, if the node_id can not be converted into a node path.
-	*/
-	function getNodePath($a_endnode_id, $a_startnode_id = 0)
-	{
-		// TODO: Cache me!
-		return $this->other->getNodePath($a_endnode_id, $a_startnode_id);
-	}
 	// END WebDAV: getNodePath function added
 
 	/**
@@ -880,20 +895,6 @@ class ilCachedTree extends ilTree
 	protected function fetchTranslationFromObjectDataCache($a_obj_ids)
 	{
 		return $this->other->fetchTranslationFromObjectDataCache($a_obj_ids);
-	}
-
-
-	/**
-	* get all information of a node.
-	* get data of a specific node from tree and object_data
-	* @access	public
-	* @param	integer		node id
-	* @return	boolean		true, if node id is in tree
-	*/
-	function isInTree($a_node_id)
-	{
-		// TODO: Cache me
-		return $this->other->isInTree($a_node_id);
 	}
 
 	/**
