@@ -66,7 +66,17 @@ class ilCachedTree extends ilTree
 	 */
 	protected $data_cache = [];
 
-	protected function getChildsCacheKey($node_id) {
+	protected function getCachedChildren($node_id) {
+		$key = $this->getChildrenCacheKey($node_id);
+		$data = $this->getCacheValue($key);
+		if ($data === null) {
+			$data = $this->other->getChilds($node_id);
+			$this->setCacheValue($key, $data);
+		}
+		return $data;
+	}
+
+	protected function getChildrenCacheKey($node_id) {
 		$tree_id = $this->other->getTreeId();
 
 		return "node_{$tree_id}_{$node_id}_children";
@@ -96,14 +106,14 @@ class ilCachedTree extends ilTree
 	protected function purgeCache($node_id) {
 		$path = $this->getPathFull($node_id);
 
-		$key = $this->getChildsCacheKey($node_id);
+		$key = $this->getChildrenCacheKey($node_id);
 		unset($this->children_cache[$key]);
 		$this->global_cache->delete($key);
 
 		// TODO: It might be enough to just purge the children
 		// of parent.
 		foreach ($path as $node) {
-			$key = $this->getChildsCacheKey($node["child"]);
+			$key = $this->getChildrenCacheKey($node["child"]);
 			unset($this->cache[$key]);
 			$this->global_cache->delete($key);
 		}
@@ -179,12 +189,7 @@ class ilCachedTree extends ilTree
 			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
 		}
 
-		$key = $this->getChildsCacheKey($a_node_id);
-		$data = $this->getCacheValue($key);
-		if ($data === null) {
-			$data = $this->other->getChilds($a_node_id);
-			$this->setCacheValue($key, $data);
-		}
+		$data = $this->getCachedChildren($a_node_id);
 
 		return $this->addCurrentObjectData($data);
 	}
