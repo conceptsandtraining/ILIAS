@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-Interface HistorizedRepositoryPlugin
+interface HistorizedRepositoryPlugin
 {
 	public function getObjType() : string;
 	public function getEmptyPayload() : array;
