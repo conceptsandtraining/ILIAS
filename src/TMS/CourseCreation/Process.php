@@ -61,7 +61,7 @@ class Process {
 		$this->configureCopiedObjects($request);
 		$this->setOwner($request);
 		$this->assignCreatorRole($request);
-
+		$this->getObjectByRefId($ref_id)->update();
 		\ilSession::_destroy($request->getSessionId());
 
 		return $request;
