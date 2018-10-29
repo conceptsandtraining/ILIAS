@@ -270,6 +270,12 @@ class ilObjExercise extends ilObject
 		$newcert = new ilCertificate(new ilExerciseCertificateAdapter($new_obj));
 		$cert->cloneCertificate($newcert);
 			
+		// cat-tms-patch start tms 1924
+		$il_notification = new ilNotification();
+		foreach ($il_notification->getNotificationsForObject(ilNotification::TYPE_EXERCISE_SUBMISSION, $this->getId(), true) as $usr_id) {
+			$il_notification->setNotification(ilNotification::TYPE_EXERCISE_SUBMISSION, $usr_id, $new_obj->getId());
+		}
+		// cat-tms-patch end
 		return $new_obj;
 	}
 	
