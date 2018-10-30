@@ -1310,6 +1310,7 @@ class ilObjCourse extends ilContainer implements ilMembershipRegistrationCodes
 				}
 
 				$fileObj->update();
+				unlink($file_path);
 			}
 			else {
 				throw new \RuntimeException("Can't process configuration '$key'");
