@@ -206,7 +206,6 @@ class ilRbacLogTableGUI extends ilTable2GUI
 			$res = array();
 			foreach($a_op as $op)
 			{
-				$dd = substr($op, strpos($op, "_"));
 				$res[] = $this->getOPCaption($a_type, $op);
 			}
 			return implode(", ", $res);
