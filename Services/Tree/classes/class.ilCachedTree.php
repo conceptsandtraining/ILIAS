@@ -960,7 +960,7 @@ class ilCachedTree extends ilTree
 	*/
 	function checkForParentType($a_ref_id,$a_type,$a_exclude_source_check = false)
 	{
-		return $this->other->checkForParentType($a_ref_id, $a_exclude_source_check);
+		return $this->other->checkForParentType($a_ref_id, $a_type, $a_exclude_source_check);
 	}
 
 	/**

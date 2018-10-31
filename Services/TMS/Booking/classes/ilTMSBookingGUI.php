@@ -230,7 +230,6 @@ abstract class ilTMSBookingGUI {
 		catch (Booking\NoApproversForUserException $e) {
 			//the exception is thrown in BookingApprovals/EventHandler;
 			$state_db->delete($this->getState($state_db, $wizard));
-			$wizard->finish();
 			$ilias_bindings->redirectToPreviousLocation(array($ilias_bindings->txt('no_approvers_for_user')), false);
 			return;
 		}
