@@ -22,18 +22,18 @@ $methods = [
 	"getChilds" => function($tree, $node) {
 		return $tree->getChilds($node);
 	},
-	"getChilds_withOrderAndDirection" => function($tree, $node) {
+	/*"getChilds_withOrderAndDirection" => function($tree, $node) {
 		return $tree->getChilds($node, "title", "ASC");
-	},
+	},*/
 	"getChildsByType" => function($tree, $node) {
 		return $tree->getChildsByType($node, "fold");
 	},
 	"getChildsByTypeFilter" => function($tree, $node) {
 		return $tree->getChildsByTypeFilter($node, ["crs", "role"]);
 	},
-	"getChildsByTypeFilter_withOrderAndDirection" => function($tree, $node) {
+	/*"getChildsByTypeFilter_withOrderAndDirection" => function($tree, $node) {
 		return $tree->getChildsByTypeFilter($node, ["crs", "role"], "description", "DESC");
-	},
+	},*/
 	"getSubTreeIds" => function($tree, $node) {
 		$ids = $tree->getSubTreeIds($node);
 		sort($ids);
