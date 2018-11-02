@@ -406,6 +406,8 @@ $DIC->database()->manipulate($query);
 <#35>
 <?php
 
+global $DIC;
+
 // Remove nodes from the tree tables that are shipped by ILIAS in a broken state.
 
 $db = $DIC->database();
