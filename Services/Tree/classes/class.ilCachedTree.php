@@ -39,13 +39,15 @@ class ilCachedTree extends ilTree
 		\ilGlobalCache $global_cache,
 		\ilObjectDataCache $object_data_cache,
 		\ilObjectDefinition $object_definition,
-		\ilLanguage $language
+		\ilLanguage $language,
+		int $cache_shard_size = 200
 	) {
 		$this->other = $other;
 		$this->global_cache = $global_cache;
 		$this->object_data_cache = $object_data_cache;
 		$this->object_definition = $object_definition;
 		$this->language = $language;
+		$this->cache_shard_size = $cache_shard_size;
 
 		if ($this->other->getTreeImplementation() instanceof \ilNestedSetTree) {
 			throw new \LogicException("ilCachedTree only works with ilMaterializedPathTree");
@@ -57,87 +59,96 @@ class ilCachedTree extends ilTree
 	//--------------------------------------
 
 	/**
-	 * @var	array
+	 * @var array
 	 */
-	protected $cache = [];
+	protected $cache_shards;
+
+	/**
+	 * @var	int
+	 */
+	protected $cache_shard_size;
 
 	protected function getCachedChildren($node_id) {
-		$key = $this->getCacheKey($node_id);
-		$data = $this->getCacheValue($key);
-		if ($data === null) {
-			$this->initCacheFor($node_id);
-			return $this->getCachedChildren($node_id);
-		}
+		$data = $this->getCacheValue($node_id);
 		return $data["children"];
 	}
 
 	protected function getCachedData($node_id) {
-		$key = $this->getCacheKey($node_id);
-		$data = $this->getCacheValue($key);
-		if ($data === null) {
-			$this->initCacheFor($node_id);
-			return $this->getCachedData($node_id);
-		}
+		$data = $this->getCacheValue($node_id);
 		return $data["data"];
 	}
 
 	protected function hasCachedInfo($node_id) {
-		$key = $this->getCacheKey($node_id);
-		return isset($this->cache[$key]) || $this->global_cache->exists($key);
+		$shard_id = $this->getCacheShardIdOf($node_id);
+		$this->loadShard($shard_id);
+		return isset($this->cache[$shard_id][$key]);
 	}
 
-	protected function initCacheFor($node_id) {
-		$key = $this->getCacheKey($node_id);
-		$data = [
-			"children" => $this->other->getChilds($node_id),
-			"data" => $this->other->getNodeData($node_id)
-		];
-		$this->cache[$key] = $data;
+	protected function getCacheShardIdOf($node_id) {
+		return (int)floor($node_id/$this->cache_shard_size);
+	}
+
+	protected function getCacheKeyFor($shard_id) {
+		$tree_id = $this->other->getTreeId();
+		return "shard_{$tree_id}_{$shard_id}";
+	}
+
+	protected function getCacheValue($node_id) {
+		$shard_id = $this->getCacheShardIdOf($node_id);
+		if (!isset($this->cache_shards[$shard_id])) {
+			$this->loadShard($shard_id);
+		}
+		return $this->cache_shards[$shard_id][$node_id];
+	}
+
+	protected function loadShardFromCache($shard_id) {
+		$key = $this->getCacheKeyFor($shard_id);
+		if ($this->global_cache->exists($key)) {
+			$this->cache_shards[$shard_id] = $this->global_cache->get($key);
+			return true;
+		}
+		return false;
+	}
+
+	protected function loadShard($shard_id) {
+		if (!$this->loadShardFromCache($shard_id)) {
+			$this->refreshShard($shard_id);
+		}
+	}
+
+	protected function refreshShard($shard_id) {
+		$data = ["i am" => "here"];
+		$l = $shard_id * $this->cache_shard_size;
+		$r = ($shard_id + 1) * $this->cache_shard_size;
+		for ($i = $l; $i < $r; $i++) {
+			if (!$this->other->isInTree($i)) {
+				continue;
+			}
+			$data[$i] = [
+				"children" => $this->other->getChilds($i),
+				"data" => $this->other->getNodeData($i)
+			];
+		}
+		$this->cache_shards[$shard_id] = $data;
+		$key = $this->getCacheKeyFor($shard_id);
 		$this->global_cache->set($key, $data);
 	}
 
-	protected function getCacheKey($node_id) {
-		$tree_id = $this->other->getTreeId();
-
-		return "node_{$tree_id}_{$node_id}";
-	}
-
-	protected function getCacheValue($key) {
-		$data = null;
-		if (isset($this->cache[$key])) {
-			$data = $this->cache[$key];
-		}
-		else if ($this->global_cache->exists($key)) {
-			$data = $this->global_cache->get($key);
-			$this->cache[$key] = $data;
-		}
-		return $data;
-	}
-
 	protected function purgeCache($node_id) {
-		$this->purgeParents($node_id);
-		$this->purgeChildren($node_id);
+		$affected_nodes = array_merge([$node_id],
+			$this->getSubTreeIds($node_id),
+			$this->getPathId($node_id)
+		);
 
-		$key = $this->getCacheKey($node_id);
-		unset($this->cache[$key]);
-		$this->global_cache->delete($key);
-	}
+		$purged_shards = [];
 
-	protected function purgeParents($node_id) {
-		$path = $this->getPathFull($node_id);
-		foreach ($path as $node) {
-			$key = $this->getCacheKey($node["child"]);
-			unset($this->cache[$key]);
-			$this->global_cache->delete($key);
-		}
-	}
-
-	protected function purgeChildren($node_id) {
-		foreach ($this->getSubTreeIds($node_id) as $id) {
-			$this->purgeChildren($id);
-			$key = $this->getCacheKey($id);
-			unset($this->cache[$key]);
-			$this->global_cache->delete($key);
+		foreach ($affected_nodes as $node) {
+			$shard_id = $this->getCacheShardIdOf($node);
+			if (in_array($shard_id, $purged_shards)) {
+				continue;
+			}
+			$this->refreshShard($shard_id);
+			$purged_shards[] = $shard_id;
 		}
 	}
 
@@ -183,12 +194,11 @@ class ilCachedTree extends ilTree
 		return $nodes;
 	}
 
-	protected function getObjIdsFromNodes(array $nodes) : array {
+	protected function getObjIdsFromNodes(array $nodes) {
 		$ids = [];
 		foreach($nodes as $node) {
-			$ids[] = $node["obj_id"];
+			yield $node["obj_id"];
 		}
-		return $ids;
 	}
 
 
@@ -788,9 +798,10 @@ class ilCachedTree extends ilTree
 	 */
 	public function insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos = IL_LAST_NODE, $a_reset_deleted_date = false)
 	{
+		$ret = $this->other->insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date);
 		$this->purgeCache($a_source_id);
 		$this->purgeCache($a_target_id);
-		return $this->other->insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date);
+		return $ret;
 	}
 	
 	
@@ -804,9 +815,10 @@ class ilCachedTree extends ilTree
 	*/
 	public function insertNode($a_node_id, $a_parent_id, $a_pos = IL_LAST_NODE, $a_reset_deletion_date = false)
 	{
+		$ret = $this->other->insertNode($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date);
 		$this->purgeCache($a_node_id);
 		$this->purgeCache($a_parent_id);
-		return $this->other->insertNode($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date);
+		return $ret;
 	}
 	
 	/**
@@ -835,8 +847,9 @@ class ilCachedTree extends ilTree
 	 */
 	function deleteTree($a_node)
 	{
+		$ret = $this->other->deleteTree($a_node);
 		$this->purgeCache($a_node);
-		return $this->other->deleteTree($a_node);
+		return $ret;
 	}
 	
 	/**
@@ -1036,8 +1049,9 @@ class ilCachedTree extends ilTree
 	 */
 	public function moveToTrash($a_node_id, $a_set_deleted = false)
 	{
+		$ret = $this->other->moveToTrash($a_node_id, $a_set_deleted);
 		$this->purgeCache($a_node_id);
-		return $this->other->moveToTrash($a_node_id, $a_set_deleted);
+		return $ret;
 	}
 
 	/**
@@ -1052,8 +1066,9 @@ class ilCachedTree extends ilTree
 	 */
 	public function saveSubTree($a_node_id, $a_set_deleted = false)
 	{
+		$ret = $this->other->saveSubTree($a_node_id, $a_set_deleted);
 		$this->purgeCache($a_node_id);
-		return $this->other->saveSubTree($a_node_id, $a_set_deleted);
+		return $ret;
 	}
 
 	/**
@@ -1300,13 +1315,11 @@ class ilCachedTree extends ilTree
 	 */
 	public function moveTree($a_source_id, $a_target_id, $a_location = self::POS_LAST_NODE)
 	{
+		$ret = $this->other->moveTree($a_source_id, $a_target_id, $a_location);
 		$this->purgeCache($a_source_id);
 		$this->purgeCache($a_target_id);
-		return $this->other->moveTree($a_source_id, $a_target_id, $a_location);
+		return $ret;
 	}
-	
-	
-	
 	
 	/**
 	 * This method is used for change existing objects 
@@ -1349,8 +1362,9 @@ class ilCachedTree extends ilTree
 	
 	public function deleteNode($a_tree_id,$a_node_id)
 	{
+		$ret = $this->other->deleteNode($a_tree_id, $a_node_id);
 		$this->purgeCache($a_node_id, $a_tree_id);
-		return $this->other->deleteNode($a_tree_id, $a_node_id);
+		return $ret;
 	}
 
 	/**
