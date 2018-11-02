@@ -114,13 +114,18 @@ $methods = [
 	}
 ];
 
+$nodes = [];
+
 $db = $DIC->database();
 $res = $db->query("SELECT child FROM tree WHERE tree = 1");
+while($row = $db->fetchAssoc($res)) {
+	$nodes[] = $row["child"];
+}
+
 
 $had_problems = false;
 
-while($row = $db->fetchAssoc($res)) {
-	$node = $row["child"];
+foreach ($nodes as $node) {
 	echo "<pre>Checking: $node\n</pre>\n";
 	$problems = [];
 	foreach ($methods as $name => $method) {
