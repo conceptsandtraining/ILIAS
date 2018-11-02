@@ -159,10 +159,6 @@ foreach ($nodes as $node) {
 	}
 };
 
-echo "<pre>\n";
-echo "\n\nDONE\n\n";
-echo "</pre>\n";
-
 if ($had_problems) {
 	echo "<pre>FAILED</pre>";
 	die(1);
