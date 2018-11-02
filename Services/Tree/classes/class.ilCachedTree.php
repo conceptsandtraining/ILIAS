@@ -188,6 +188,10 @@ class ilCachedTree extends ilTree
 				$node["description"] = $this->object_data_cache->lookupDescription($obj_id);
 			}
 
+			if($data['type'] == 'crsr' or $data['type'] == 'catr' or $data['type'] == 'grpr') {
+				$data['title'] = ilContainerReference::_lookupTitle($data['obj_id']);
+			}
+
 			$node["desc"] = $node["description"];
 		}
 
