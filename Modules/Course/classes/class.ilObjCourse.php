@@ -1262,6 +1262,56 @@ class ilObjCourse extends ilContainer implements ilMembershipRegistrationCodes
 				$this->setTitle($config["title"]);
 				$this->update();
 			}
+			else if ($key == "weblink") {
+				global $DIC;
+				$g_lng = $DIC["lng"];
+				$g_lng->loadLanguageModule("tms");
+
+				require_once "Modules/WebResource/classes/class.ilObjLinkResource.php";
+				$obj = new ilObjLinkResource();
+				$obj->create(false);
+				$obj->createReference();
+				$obj->putInTree($this->getRefId());
+
+				$link_resource_items = new ilLinkResourceItems($obj->getId());
+				$link_resource_items->setTarget($value);
+				$link_resource_items->setTitle($g_lng->txt("weblink"));
+				$link_resource_items->setDescription("");
+				$link_resource_items->setDisableCheckStatus(false);
+				$link_resource_items->setInternal(false);
+				$link_resource_items->setActiveStatus(true);
+				$link_resource_items->add();
+				$link_resource_items->updateValid(true);
+			}
+			else if ($key == "upload_file") {
+				$file_name = $value["org_file_name"];
+				$file_path = $value["upload_file_path"];
+				$size = $value["file_size"];
+				$type = $value["file_type"];
+
+				$fileObj = new ilObjFile();
+				$fileObj->create();
+				$fileObj->createReference();
+				$fileObj->putInTree($this->getRefId());
+
+				$fileObj->setTitle($file_name);
+				$fileObj->setDescription("");
+				$fileObj->setFileName($file_name);
+				$fileObj->setFileType(ilMimeTypeUtil::getMimeType("", $file_name, $type));
+				$fileObj->setFileSize($size);
+
+				$fileObj->createDirectory();
+				$fileObj->raiseUploadError(true);
+				$fileObj->copy($file_path, $file_name);
+				if(ilObject::hasAutoRating($fileObj->getType(), $fileObj->getRefId())
+					&& method_exists($fileObj, "setRating")
+				) {
+					$fileObj->setRating(true);
+				}
+
+				$fileObj->update();
+				unlink($file_path);
+			}
 			else {
 				throw new \RuntimeException("Can't process configuration '$key'");
 			}
