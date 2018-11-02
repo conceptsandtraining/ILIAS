@@ -27,11 +27,6 @@ class ilCachedTree extends ilTree
 	protected $object_definition;
 
 	/**
-	 * @var \ilLanguage
-	 */
-	protected $language;
-
-	/**
 	* Constructor
 	*/
 	public function __construct(
@@ -39,14 +34,12 @@ class ilCachedTree extends ilTree
 		\ilGlobalCache $global_cache,
 		\ilObjectDataCache $object_data_cache,
 		\ilObjectDefinition $object_definition,
-		\ilLanguage $language,
 		int $cache_shard_size = 200
 	) {
 		$this->other = $other;
 		$this->global_cache = $global_cache;
 		$this->object_data_cache = $object_data_cache;
 		$this->object_definition = $object_definition;
-		$this->language = $language;
 		$this->cache_shard_size = $cache_shard_size;
 
 		if ($this->other->getTreeImplementation() instanceof \ilNestedSetTree) {
@@ -159,6 +152,7 @@ class ilCachedTree extends ilTree
 	protected function addCurrentObjectData(array $nodes) : array {
 		global $DIC;
 		$ilUser = $DIC["ilUser"];
+		$lng = $DIC["lng"];
 
 		$ids = $this->getObjIdsFromNodes($nodes);
 
@@ -179,8 +173,8 @@ class ilCachedTree extends ilTree
 				if ($type == "rolf" && $node["obj_id"] !== ROLE_FOLDER_ID) {
 				}
 				else {
-					$node["title"] = $this->language->txt("obj_{$type}");
-					$node["description"] = $this->language->txt("obj_{$type}_desc");
+					$node["title"] = $lng->txt("obj_{$type}");
+					$node["description"] = $lng->txt("obj_{$type}_desc");
 				}
 			}
 			else {

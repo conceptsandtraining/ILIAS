@@ -1235,8 +1235,7 @@ class ilInitialisation
 				$tree,
 				$global_cache,
 				$DIC["ilObjDataCache"],
-				$DIC["objDefinition"],
-				$DIC["lng"]
+				$DIC["objDefinition"]
 			);
 		}
 		// cat-tms-patch end
