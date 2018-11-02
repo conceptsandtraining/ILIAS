@@ -164,8 +164,10 @@ echo "\n\nDONE\n\n";
 echo "</pre>\n";
 
 if ($had_problems) {
+	echo "<pre>FAILED</pre>";
 	die(1);
 }
 else {
+	echo "<pre>DONE</pre>";
 	die(0);
 }
