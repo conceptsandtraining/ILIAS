@@ -219,6 +219,13 @@ class ilCachedTree extends ilTree
 			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
 		}
 
+		if (!isset($a_node_id))
+		{
+			$message = "No node_id given!";
+			$this->log->error($message);
+			throw new InvalidArgumentException($message);
+		}
+
 		$data = $this->getCachedChildren($a_node_id);
 
 		return $this->addCurrentObjectData($data);
