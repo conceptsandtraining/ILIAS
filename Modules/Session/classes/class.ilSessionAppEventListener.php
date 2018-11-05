@@ -230,11 +230,11 @@ class ilSessionAppEventListener {
 
 		$g_tree 	= $DIC->repositoryTree();
 		$ret 		= array();
-		$sessions 	= $g_tree->getChildsByType($crs_ref_id, "sess");
+		$sessions 	= $g_tree->getSubTree($g_tree->getNodeData($crs_ref_id), false, "sess");
 
 		foreach($sessions as $session)
 		{
-			$ret[] = ilObjectFactory::getInstanceByRefId($session['ref_id']);
+			$ret[] = ilObjectFactory::getInstanceByRefId($session);
 		}
 
 		return $ret;

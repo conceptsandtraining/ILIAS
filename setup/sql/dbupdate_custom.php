@@ -403,3 +403,16 @@ $query = 'DELETE il_orgu_ua'
 global $DIC;
 $DIC->database()->manipulate($query);
 ?>
+<#35>
+<?php
+
+global $DIC;
+
+// Remove nodes from the tree tables that are shipped by ILIAS in a broken state.
+
+$db = $DIC->database();
+
+$db->manipulate("DELETE FROM tree WHERE tree = 1 AND child IN (14, 24, 25)");
+$db->manipulate("DELETE FROM object_reference WHERE ref_id IN (14, 24, 25)");
+
+?>

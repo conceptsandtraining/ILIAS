@@ -325,7 +325,8 @@ class ilPublicUserProfileGUI
 		$tpl->setVariable("ROWCOL1", "tblrow1");
 		$tpl->setVariable("ROWCOL2", "tblrow2");
 
-		if(!$this->offline && $ilUser->getId() != ANONYMOUS_USER_ID)
+		// cat-tms-patch start tms - 1913
+		/*if(!$this->offline && $ilUser->getId() != ANONYMOUS_USER_ID)
 		{
 			$ref_url = str_replace("&amp;", "&", $this->getBackUrl());
 			if(!$ref_url)
@@ -343,8 +344,9 @@ class ilPublicUserProfileGUI
 				)
 			);
 			$tpl->parseCurrentBlock();			
-		}
-		
+		}*/
+		// cat-tms-patch end
+
 		$first_name = "";
 		if($this->getPublicPref($user, "public_title") == "y")
 		{

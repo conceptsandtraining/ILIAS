@@ -14275,7 +14275,7 @@ tms#:#request_book#:#Buchungsanfrage
 tms#:#user_bookings#:#Buchungen
 tms#:#booked_user#:#Gebuchte Teilnehmer
 tms#:#waiting_user#:#Teilnehmer auf Warteliste
-tms#:#min_member#:#minimale Teilnehmerzahl
+tms#:#min_member#:#Mindestanzahl Teilnehmer
 tms#:#max_member#:#maximale Teilnehmerzahl
 tms#:#hide_breadcrumb#:#Navigation einschränken
 tms#:#hide_breadcrumb_info#:#Mit dieser Einstellung wird die Navigation nur bis zum Kurs angezeigt.
@@ -14358,3 +14358,4 @@ tms#:#title_booking_with_approval#:#Buchen mit Genehmigung für %s
 tms#:#no_approvers_for_user#:#In der Organisationsstruktur sind keine übergeordneten Benutzer mit der benötigten Position vorhanden. Die Buchungsanfrage kann nicht bearbeitet werden.
 tms#:#booking_request_created#:#Für das Training "%s" wurde eine Buchungsanfrage für %s gestellt.
 rbac#:#rbac_log_operation_rmv#:#Recht entfernt für "%s"
+tms#:#weblink#:#Weblink

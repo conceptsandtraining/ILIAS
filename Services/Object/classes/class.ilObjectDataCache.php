@@ -88,6 +88,15 @@ class ilObjectDataCache
 		}
 		return @$this->object_data_cache[$a_obj_id]['last_update'];
 	}
+
+	function lookupImportId($a_obj_id)
+	{
+		if(!$this->__isObjectCached($a_obj_id))
+		{
+			$this->__storeObjectData($a_obj_id);
+		}
+		return @$this->object_data_cache[$a_obj_id]['import_id'];
+	}
 	// PRIVATE
 
 	/**
@@ -188,6 +197,7 @@ class ilObjectDataCache
 			$this->object_data_cache[$a_obj_id]['type'] = $row->type;
 			$this->object_data_cache[$a_obj_id]['owner'] = $row->owner;
 			$this->object_data_cache[$a_obj_id]['last_update'] = $row->last_update;
+			$this->object_data_cache[$a_obj_id]['import_id'] = $row->import_id;
 			
 			if (is_object($objDefinition))
 			{
@@ -266,6 +276,7 @@ class ilObjectDataCache
 			$this->object_data_cache[$row->obj_id]['type'] = $row->type;
 			$this->object_data_cache[$row->obj_id]['owner'] = $row->owner;
 			$this->object_data_cache[$row->obj_id]['last_update'] = $row->last_update;
+			$this->object_data_cache[$row->obj_id]['import_id'] = $row->import_id;
 
 			if (is_object($objDefinition))
 			{

@@ -17,14 +17,594 @@ class ilCachedTree extends ilTree
 	protected $global_cache;
 
 	/**
+	 * @var \ilObjectDataCache
+	 */
+	protected $object_data_cache;
+
+	/**
+	 * @var \ilObjectDefinition
+	 */
+	protected $object_definition;
+
+	/**
 	* Constructor
 	*/
-	public function __construct(\ilTree $other, \ilGlobalCache $global_cache)
-	{
+	public function __construct(
+		\ilTree $other,
+		\ilGlobalCache $global_cache,
+		\ilObjectDataCache $object_data_cache,
+		\ilObjectDefinition $object_definition,
+		int $cache_shard_size = 200
+	) {
 		$this->other = $other;
 		$this->global_cache = $global_cache;
+		$this->object_data_cache = $object_data_cache;
+		$this->object_definition = $object_definition;
+		$this->cache_shard_size = $cache_shard_size;
+
+		if ($this->other->getTreeImplementation() instanceof \ilNestedSetTree) {
+			throw new \LogicException("ilCachedTree only works with ilMaterializedPathTree");
+		}
 	}
-	
+
+	//--------------------------------------
+	// CACHING
+	//--------------------------------------
+
+	/**
+	 * @var array
+	 */
+	protected $cache_shards;
+
+	/**
+	 * @var	int
+	 */
+	protected $cache_shard_size;
+
+	protected function getCachedChildren($node_id) {
+		$data = $this->getCacheValue($node_id);
+		return $data["children"];
+	}
+
+	protected function getCachedData($node_id) {
+		$data = $this->getCacheValue($node_id);
+		return $data["data"];
+	}
+
+	protected function hasCachedInfo($node_id) {
+		$shard_id = $this->getCacheShardIdOf($node_id);
+		if (!isset($this->cache_shards[$shard_id])) {
+			$this->loadShard($shard_id);
+		}
+		return isset($this->cache_shards[$shard_id][$node_id]);
+	}
+
+	protected function getCacheShardIdOf($node_id) {
+		return (int)floor($node_id/$this->cache_shard_size);
+	}
+
+	protected function getCacheKeyFor($shard_id) {
+		$tree_id = $this->other->getTreeId();
+		return "shard_{$tree_id}_{$shard_id}";
+	}
+
+	protected function getCacheValue($node_id) {
+		$shard_id = $this->getCacheShardIdOf($node_id);
+		if (!isset($this->cache_shards[$shard_id])) {
+			$this->loadShard($shard_id);
+		}
+		return $this->cache_shards[$shard_id][$node_id];
+	}
+
+	protected function loadShardFromCache($shard_id) {
+		$key = $this->getCacheKeyFor($shard_id);
+		if ($this->global_cache->exists($key)) {
+			$this->cache_shards[$shard_id] = $this->global_cache->get($key);
+			return true;
+		}
+		return false;
+	}
+
+	protected function loadShard($shard_id) {
+		if (!$this->loadShardFromCache($shard_id)) {
+			$this->refreshShard($shard_id);
+		}
+	}
+
+	protected function refreshShard($shard_id) {
+		$data = ["i am" => "here"];
+		$l = $shard_id * $this->cache_shard_size;
+		$r = ($shard_id + 1) * $this->cache_shard_size;
+		for ($i = $l; $i < $r; $i++) {
+			if (!$this->other->isInTree($i)) {
+				continue;
+			}
+			$data[$i] = [
+				"children" => $this->other->getChilds($i),
+				"data" => $this->other->getNodeData($i)
+			];
+		}
+		$this->cache_shards[$shard_id] = $data;
+		$key = $this->getCacheKeyFor($shard_id);
+		$this->global_cache->set($key, $data);
+	}
+
+	protected function purgeCache($node_id) {
+		$affected_nodes = array_merge([$node_id],
+			$this->getSubTreeIds($node_id),
+			$this->getPathId($node_id)
+		);
+
+		$purged_shards = [];
+
+		foreach ($affected_nodes as $node) {
+			$shard_id = $this->getCacheShardIdOf($node);
+			if (in_array($shard_id, $purged_shards)) {
+				continue;
+			}
+			$this->refreshShard($shard_id);
+			$purged_shards[] = $shard_id;
+		}
+	}
+
+	protected function purgeAll() {
+		$this->global_cache->flush();
+	}
+
+	protected function addCurrentObjectData(array $nodes) : array {
+		global $DIC;
+		$ilUser = $DIC["ilUser"];
+		$lng = $DIC["lng"];
+
+		$ids = $this->getObjIdsFromNodes($nodes);
+
+		$this->object_data_cache->preloadObjectCache($ids);
+
+		foreach($nodes as &$node) {
+			$obj_id = $node["obj_id"];
+
+			$type = $this->object_data_cache->lookupType($obj_id);
+			$node["type"] = $type;
+			$node["owner"] = $this->object_data_cache->lookupOwner($obj_id);
+			$node["last_update"] = $this->object_data_cache->lookupLastUpdate($obj_id);
+			$node["import_id"] = $this->object_data_cache->lookupImportId($obj_id);
+
+			// look into ilTree from where I copied this mess
+			$translation_type = $this->object_definition->getTranslationType($type);
+			if ($translation_type == "sys") {
+				if ($type == "rolf" && $node["obj_id"] !== ROLE_FOLDER_ID) {
+				}
+				else {
+					$node["title"] = $lng->txt("obj_{$type}");
+					$node["description"] = $lng->txt("obj_{$type}_desc");
+				}
+			}
+			else {
+				$node["title"] = $this->object_data_cache->lookupTitle($obj_id);
+				$node["description"] = $this->object_data_cache->lookupDescription($obj_id);
+			}
+
+			if($type == 'crsr' or $type == 'catr' or $type == 'grpr') {
+				$node['title'] = ilContainerReference::_lookupTitle($node['obj_id']);
+			}
+
+			$node["desc"] = $node["description"];
+		}
+
+		return $nodes;
+	}
+
+	protected function getObjIdsFromNodes(array $nodes) {
+		$ids = [];
+		foreach($nodes as $node) {
+			yield $node["obj_id"];
+		}
+	}
+
+
+	//--------------------------------------
+	// CACHED METHODS
+	//--------------------------------------
+
+	/**
+	* get child nodes of given node
+	* @access	public
+	* @param	integer		node_id
+	* @param	string		sort order of returned childs, optional (possible values: 'title','desc','last_update' or 'type')
+	* @param	string		sort direction, optional (possible values: 'DESC' or 'ASC'; defalut is 'ASC')
+	* @return	array		with node data of all childs or empty array
+	* @throws InvalidArgumentException
+	*/
+	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
+	{
+		if (!$this->isInTree($a_node_id)) {
+			return [];
+		}
+
+		if ($a_order !== "" || $a_direction !== "ASC") {
+			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
+		}
+
+		if (!isset($a_node_id)) {
+			$message = "No node_id given!";
+			throw new InvalidArgumentException($message);
+		}
+
+		$data = $this->getCachedChildren($a_node_id);
+
+		return $this->addCurrentObjectData($data);
+	}
+
+	/**
+	* get child nodes of given node by object type
+	* @access	public
+	* @param	integer		node_id
+	* @param	string		object type
+	* @return	array		with node data of all childs or empty array
+	* @throws InvalidArgumentException
+	*/
+	function getChildsByType($a_node_id,$a_type)
+	{
+		$children = $this->getChilds($a_node_id);
+		$nodes = [];
+		foreach ($children as $node) {
+			if ($node["type"] == $a_type) {
+				// The "last" key is set on the last array entry by the original
+				// getChilds-implementation. The original getChildsByType-impl
+				// does not set that key. This is why I remove it here. I do not
+				// really know if this changes a thing.
+				if (isset($node["last"])) {
+					unset($node["last"]);
+				}
+				$nodes[] = $node;
+			}
+		}
+		return $nodes;
+	}
+
+	/**
+	* get child nodes of given node by object type
+	* @access	public
+	* @param	integer		node_id
+	* @param	array		array of object type
+	* @return	array		with node data of all childs or empty array
+	* @throws InvalidArgumentException
+	*/
+	public function getChildsByTypeFilter($a_node_id,$a_types,$a_order = "",$a_direction = "ASC")
+	{
+		if ($a_order !== "" || $a_direction !== "ASC") {
+			return $this->other->getChildsByTypeFilter($a_node_id, $a_types, $a_order, $a_direction);
+		}
+
+		$children = $this->getChilds($a_node_id);
+		$nodes = [];
+		foreach($children as $node) {
+			if (in_array($node["type"], $a_types)) {
+				// The "last" key is set on the last array entry by the original
+				// getChilds-implementation. The original getChildsByType-impl
+				// does not set that key. This is why I remove it here. I do not
+				// really know if this changes a thing.
+				if (isset($node["last"])) {
+					unset($node["last"]);
+				}
+				$nodes[] = $node;
+			}
+		}
+
+		return $nodes;
+	}
+
+	/**
+	 * Get all ids of subnodes
+	 * @return
+	 * @param object $a_ref_id
+	 */
+	public function getSubTreeIds($a_ref_id)
+	{
+		$node = $this->getNodeData($a_ref_id);
+		return iterator_to_array(
+			$this->getIdsFromNodes(
+				$this->getSubTreeRecursive($node)
+			)
+		);
+	}
+
+	/**
+	* get all nodes in the subtree under specified node
+	*
+	* @access	public
+	* @param	array		node_data
+	* @param    boolean     with data: default is true otherwise this function return only a ref_id array
+	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
+	* @throws InvalidArgumentException
+	*/
+	function getSubTree($a_node,$a_with_data = true, $a_type = "")
+	{
+		$res = $this->getSubTreeRecursiveWithRoot($a_node);
+
+		if ($a_type !== "") {
+			if (!is_array($a_type)) {
+				$a_type = [$a_type];
+			}
+
+			$res = $this->getNodesWithTypes($a_type, $res);
+		}
+
+		if (!$a_with_data) {
+			$res = $this->getIdsFromNodes($res);
+		}
+
+		return iterator_to_array($res);
+	}
+
+	/**
+	* get types of nodes in the subtree under specified node
+	*
+	* @access	public
+	* @param	array		node_id
+	* @param	array		object types to filter e.g array('rolf')
+	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
+	*/
+	function getSubTreeTypes($a_node_id,$a_filter = 0)
+	{
+		$node = $this->getNodeData($a_node_id);
+		$nodes = $this->getSubTreeRecursiveWithRoot($node);
+		if ($a_filter !== 0) {
+			$nodes = $this->getNodesWithoutTypes($a_filter, $nodes);
+		}
+		return iterator_to_array(
+			$this->getTypesFromNodes($nodes)
+		);
+	}
+
+	protected function getSubTreeRecursiveWithRoot($root) {
+		yield $root;
+		foreach ($this->getSubTreeRecursive($root) as $node) {
+			yield $node;
+		}
+	}
+
+	protected function getSubTreeRecursive($node) {
+		if (!isset($node["child"]) || !$node["child"]) {
+			return;
+		}
+		$children = $this->getChilds($node["child"]);
+		foreach ($children as $child) {
+			// The "last" key is set on the last array entry by the original
+			// getChilds-implementation. The original getChildsByType-impl
+			// does not set that key. This is why I remove it here. I do not
+			// really know if this changes a thing.
+			if (isset($child["last"])) {
+				unset($child["last"]);
+			}
+			yield $child;
+			foreach ($this->getSubTreeRecursive($child) as $sub) {
+				yield $sub;
+			}
+		}
+	}
+
+	protected function getIdsFromNodes($nodes) {
+		foreach ($nodes as $node) {
+			// There might be broken node-records.
+			if (!isset($node["child"])) {
+				continue;
+			}
+			yield $node["child"];
+		}
+	}
+
+	protected function getNodesWithTypes(array $types, $nodes) {
+		foreach ($nodes as $node) {
+			if (in_array($node["type"], $types)) {
+				yield $node;
+			}
+		}
+	}
+
+	protected function getNodesWithoutTypes(array $types, $nodes) {
+		foreach ($nodes as $node) {
+			if (!in_array($node["type"], $types)) {
+				yield $node;
+			}
+		}
+	}
+
+	protected function getTypesFromNodes($nodes) {
+		$seen_types = [];
+		foreach ($nodes as $node) {
+			if (!in_array($node["type"], $seen_types)) {
+				$seen_types[] = $node["type"];
+				yield $node["type"];
+			}
+		}
+	}
+
+	/**
+	* get path from a given startnode to a given endnode
+	* if startnode is not given the rootnode is startnode.
+	* This function chooses the algorithm to be used.
+	*
+	* @access	public
+	* @param	integer	node_id of endnode
+	* @param	integer	node_id of startnode (optional)
+	* @return	array	ordered path info (id,title,parent) from start to end
+	*/
+	function getPathFull($a_endnode_id, $a_startnode_id = 0)
+	{
+		$node = $this->getNodeData($a_endnode_id);
+		$res = [$node];
+		while ($node["child"] != $a_startnode_id && $node["parent"] != 0) {
+			$node = $this->getNodeData($node["parent"]);
+			$res[] = $node;
+		}
+
+		if ($a_startnode_id != 0 && $node["child"] != $a_startnode_id) {
+			return [];
+		}
+
+		return $this->addCurrentObjectData(array_reverse($res));
+	}
+
+	/**
+	* get path from a given startnode to a given endnode
+	* if startnode is not given the rootnode is startnode
+	* @access	public
+	* @param	integer		node_id of endnode
+	* @param	integer		node_id of startnode (optional)
+	* @return	array		all path ids from startnode to endnode
+	* @throws InvalidArgumentException
+	*/
+	public function getPathId($a_endnode_id, $a_startnode_id = 0)
+	{
+		$path = $this->getPathFull($a_endnode_id, $a_startnode_id);
+		$res = [];
+		foreach ($path as $node) {
+			$res[] = $node["child"];
+		}
+		return $res;
+	}
+
+	/**
+	* get all information of a node.
+	* get data of a specific node from tree and object_data
+	* @access	public
+	* @param	integer		node id
+	* @return	array		2-dim (int/str) node_data
+	* @throws InvalidArgumentException
+	*/
+	function getNodeData($a_node_id, $a_tree_pk = null)
+	{
+		if (!is_null($a_tree_pk)) {
+			return $this->getNodeData($a_node_id, $a_tree_pk);
+		}
+		return $this->getCachedData($a_node_id);
+	}
+
+	/**
+	* get all information of a node.
+	* get data of a specific node from tree and object_data
+	* @access	public
+	* @param	integer		node id
+	* @return	boolean		true, if node id is in tree
+	*/
+	function isInTree($a_node_id)
+	{
+		return $this->hasCachedInfo($a_node_id);
+	}
+
+	/**
+	* get data of parent node from tree and object_data
+	* @access	public
+	* @param	integer		node id
+	* @return	array
+	* @throws InvalidArgumentException
+	*/
+	public function getParentNodeData($a_node_id)
+	{
+		$node = $this->getNodeData($a_node_id);
+		if ($node["parent"] == 0) {
+			return [ "desc" => "" ]; // some random (?) edge case behaviour for root
+		}
+		return $this->getNodeData($node["parent"]);
+	}
+
+	/**
+	* checks if a node is in the path of an other node
+	* @access	public
+	* @param	integer		object id of start node
+	* @param    integer     object id of query node
+	* @return	integer		number of entries
+	*/
+	public function isGrandChild($a_startnode_id,$a_querynode_id)
+	{
+		$node = $this->getNodeData($a_querynode_id);
+		while ($node["parent"] != 0) {
+			if ($node["parent"] == $a_startnode_id) {
+				return true;
+			}
+			$node = $this->getNodeData($node["parent"]);
+		}
+		return false;
+	}
+
+	/**
+	* get parent id of given node
+	* @access	public
+	* @param	integer	node id
+	* @return	integer	parent id
+	* @throws InvalidArgumentException
+	*/
+	function getParentId($a_node_id)
+	{
+		return $this->getNodeData($a_node_id)["parent"];
+	}
+
+	/**
+	* Check for parent type
+	* e.g check if a folder (ref_id 3) is in a parent course obj => checkForParentType(3,'crs');
+	*
+	* @access	public
+	* @param	integer	ref_id
+	* @param	string type
+	* @return	mixed false if item is not in tree,
+	* 				  int (object ref_id) > 0 if path container course, int 0 if pathc does not contain the object type 
+	*/
+	function checkForParentType($a_ref_id,$a_type,$a_exclude_source_check = false)
+	{
+		if (!$this->isInTree($a_ref_id)) {
+			return false;
+		}
+
+		$node = $this->getNodeData($a_ref_id);
+		if ($a_exclude_source_check && $node["parent"] != 0) {
+			$node = $this->getNodeData($node["parent"]);
+		}
+		while ($node["parent"] != 0) {
+			if ($node["type"] == $a_type) {
+				return $node["child"];
+			}
+			$node = $this->getNodeData($node["parent"]);
+		}
+
+		return 0;
+	}
+
+	//--------------------------------------
+	// INTERCEPT EVENTS
+	//--------------------------------------
+
+	/**
+	 * @var	array
+	 */
+	protected $intercepted_events = array();
+
+	public function raise(string $module, string $event, array $params) {
+		$this->intercepted_events[] = [$module, $event, $params];
+	}
+
+	public function withInterceptedEvents(\Closure $call) {
+		$app_event_handler = $GLOBALS["ilAppEventHandler"];
+		$GLOBALS["ilAppEventHandler"] = $this;
+		$this->intercepted_events = [];
+
+		$ret = $call();
+
+		foreach ($this->intercepted_events as $event) {
+			list($module, $event, $params) = $event;
+			$app_event_handler->raise($module, $event, $params);
+		}
+
+		$this->intercepted_events = [];
+		$GLOBALS["ilAppEventHandler"] = $app_event_handler;
+
+		return $ret;
+	}
+
+	//--------------------------------------
+	// FALLBACKS TO CACHELESS TREE
+	//--------------------------------------
+
 	/**
 	 * Init tree implementation
 	 */
@@ -238,81 +818,6 @@ class ilCachedTree extends ilTree
 	}
 
 	/**
-	* get child nodes of given node
-	* @access	public
-	* @param	integer		node_id
-	* @param	string		sort order of returned childs, optional (possible values: 'title','desc','last_update' or 'type')
-	* @param	string		sort direction, optional (possible values: 'DESC' or 'ASC'; defalut is 'ASC')
-	* @return	array		with node data of all childs or empty array
-	* @throws InvalidArgumentException
-	*/
-	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
-	{
-		$key = $this->getCacheKey($a_node_id);
-		if (isset($this->cache[$a_node_id])) {
-			$data = $this->cache[$a_node_id];
-		}
-		else if ($this->global_cache->exists($key)) {
-			$data = $this->global_cache->get($key);
-			// this takes care of an cache quirk, where empty array is null
-			if ($data === null) {
-				$data = [];
-			}
-			$this->cache[$a_node_id] = $data;
-		}
-		else {
-			$data = $this->other->getChilds($a_node_id);
-			$this->cache[$a_node_id] = $data;
-			$this->global_cache->set($key, $data);
-		}
-
-		if ($a_order !== "") {
-			usort($data, function($l,$r) use ($a_order) {
-				$l = $l[$a_order];
-				$r = $r[$a_order];
-				if ($l == $r) {
-					return 0;
-				}
-				if ($l < $r) {
-					return -1;
-				}
-				return 1;
-			});
-		}
-
-		if ($a_direction !== "ASC") {
-			$data = array_reverse($data);
-		}
-
-		return $data;
-	}
-
-	/**
-	 * @var	array
-	 */
-	protected $cache;
-
-	protected function getCacheKey($node_id, $tree_id = null) {
-		if ($tree_id === null) {
-			$tree_id = $this->other->getTreeId();
-		}
-		return "node_".$tree_id."_".$node_id;
-	}
-
-	protected function purgeCache($node_id) {
-		$key = $this->getCacheKey($node_id);
-		unset($this->cache[$key]);
-		$this->global_cache->delete($key);
-
-		$path = $this->getPathFull($node_id);
-		foreach ($path as $node_id) {
-			$key = $this->getCacheKey($node_id);
-			unset($this->cache[$key]);
-			$this->global_cache->delete($key);
-		}
-	}
-
-	/**
 	* get child nodes of given node (exclude filtered obj_types)
 	* @access	public
 	* @param	array		objects to filter (e.g array('rolf'))
@@ -324,34 +829,6 @@ class ilCachedTree extends ilTree
 	function getFilteredChilds($a_filter,$a_node,$a_order = "",$a_direction = "ASC")
 	{
 		return $this->other->getFilteredChilds($a_filter, $a_node, $a_order, $a_direction);
-	}
-
-
-	/**
-	* get child nodes of given node by object type
-	* @access	public
-	* @param	integer		node_id
-	* @param	string		object type
-	* @return	array		with node data of all childs or empty array
-	* @throws InvalidArgumentException
-	*/
-	function getChildsByType($a_node_id,$a_type)
-	{
-		return $this->other->getChildsByType($a_node_id, $a_type);
-	}
-
-
-	/**
-	* get child nodes of given node by object type
-	* @access	public
-	* @param	integer		node_id
-	* @param	array		array of object type
-	* @return	array		with node data of all childs or empty array
-	* @throws InvalidArgumentException
-	*/
-	public function getChildsByTypeFilter($a_node_id,$a_types,$a_order = "",$a_direction = "ASC")
-	{
-		return $this->other->getChildsByTypeFilter($a_node_id, $a_types, $a_order, $a_direction);
 	}
 	
 	/**
@@ -367,9 +844,12 @@ class ilCachedTree extends ilTree
 	 */
 	public function insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos = IL_LAST_NODE, $a_reset_deleted_date = false)
 	{
-		$this->purgeCache($a_source_id);
-		$this->purgeCache($a_target_id);
-		return $this->other->insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date);
+		return $this->withInterceptedEvents(function () use ($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date) {
+			$ret = $this->other->insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date);
+			$this->purgeCache($a_source_id);
+			$this->purgeCache($a_target_id);
+			return $ret;
+		});
 	}
 	
 	
@@ -383,9 +863,12 @@ class ilCachedTree extends ilTree
 	*/
 	public function insertNode($a_node_id, $a_parent_id, $a_pos = IL_LAST_NODE, $a_reset_deletion_date = false)
 	{
-		$this->purgeCache($a_node_id);
-		$this->purgeCache($a_parent_id);
-		return $this->other->insertNode($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date);
+		return $this->withInterceptedEvents(function () use ($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date) {
+			$ret = $this->other->insertNode($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date);
+			$this->purgeCache($a_node_id);
+			$this->purgeCache($a_parent_id);
+			return $ret;
+		});
 	}
 	
 	/**
@@ -404,44 +887,6 @@ class ilCachedTree extends ilTree
 	{
 		return $this->other->getFilteredSubTree($a_node_id, $a_filter);
 	}
-	
-	/**
-	 * Get all ids of subnodes
-	 * @return 
-	 * @param object $a_ref_id
-	 */
-	public function getSubTreeIds($a_ref_id)
-	{
-		return $this->other->getSubTreeIds($a_ref_id);
-	}
-	
-
-	/**
-	* get all nodes in the subtree under specified node
-	*
-	* @access	public
-	* @param	array		node_data
-	* @param    boolean     with data: default is true otherwise this function return only a ref_id array
-	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
-	* @throws InvalidArgumentException
-	*/
-	function getSubTree($a_node,$a_with_data = true, $a_type = "")
-	{
-		return $this->other->getSubTree($a_node, $a_with_data, $a_type);
-	}
-
-	/**
-	* get types of nodes in the subtree under specified node
-	*
-	* @access	public
-	* @param	array		node_id
-	* @param	array		object types to filter e.g array('rolf')
-	* @return	array		2-dim (int/array) key, node_data of each subtree node including the specified node
-	*/
-	function getSubTreeTypes($a_node,$a_filter = 0)
-	{
-		return $this->other->getSubTreeTypes($a_node, $a_filter);
-	}
 
 	/**
 	 * delete node and the whole subtree under this node
@@ -452,8 +897,11 @@ class ilCachedTree extends ilTree
 	 */
 	function deleteTree($a_node)
 	{
-		$this->purgeCache($a_node);
-		return $this->other->deleteTree($a_node);
+		return $this->withInterceptedEvents(function () use ($a_node) {
+			$ret = $this->other->deleteTree($a_node);
+			$this->purgeCache($a_node);
+			return $ret;
+		});
 	}
 	
 	/**
@@ -464,22 +912,6 @@ class ilCachedTree extends ilTree
 	{
 		return $this->other->validateParentRelations();
 	}
-
-	/**
-	* get path from a given startnode to a given endnode
-	* if startnode is not given the rootnode is startnode.
-	* This function chooses the algorithm to be used.
-	*
-	* @access	public
-	* @param	integer	node_id of endnode
-	* @param	integer	node_id of startnode (optional)
-	* @return	array	ordered path info (id,title,parent) from start to end
-	*/
-	function getPathFull($a_endnode_id, $a_startnode_id = 0)
-	{
-		return $this->other->getPathFull($a_endnode_id, $a_startnode_id);
-	}
-	
 
 	/**
 	 * Preload depth/parent
@@ -493,17 +925,24 @@ class ilCachedTree extends ilTree
 	}
 
 	/**
-	* get path from a given startnode to a given endnode
-	* if startnode is not given the rootnode is startnode
+	* Returns the node path for the specified object reference.
+	*
+	* Note: this function returns the same result as getNodePathForTitlePath,
+	* but takes ref-id's as parameters.
+	*
+	* This function differs from getPathFull, in the following aspects:
+	* - The title of an object is not translated into the language of the user
+	* - This function is significantly faster than getPathFull.
+	*
 	* @access	public
-	* @param	integer		node_id of endnode
-	* @param	integer		node_id of startnode (optional)
-	* @return	array		all path ids from startnode to endnode
-	* @throws InvalidArgumentException
+	* @param	integer	node_id of endnode
+	* @param	integer	node_id of startnode (optional)
+	* @return	array	ordered path info (depth,parent,child,obj_id,type,title)
+	*               or null, if the node_id can not be converted into a node path.
 	*/
-	public function getPathId($a_endnode_id, $a_startnode_id = 0)
+	function getNodePath($a_endnode_id, $a_startnode_id = 0)
 	{
-		return $this->other->getPathId($a_endnode_id, $a_startnode_id);
+		return $this->other->getNodePath($a_endnode_id, $a_startnode_id);
 	}
 
 	// BEGIN WebDAV: getNodePathForTitlePath function added
@@ -530,26 +969,6 @@ class ilCachedTree extends ilTree
 	}
 	// END WebDAV: getNodePathForTitlePath function added
 	// END WebDAV: getNodePath function added
-	/**
-	* Returns the node path for the specified object reference.
-	*
-	* Note: this function returns the same result as getNodePathForTitlePath, 
-	* but takes ref-id's as parameters.
-	*
-	* This function differs from getPathFull, in the following aspects:
-	* - The title of an object is not translated into the language of the user
-	* - This function is significantly faster than getPathFull.
-	*
-	* @access	public
-	* @param	integer	node_id of endnode
-	* @param	integer	node_id of startnode (optional)
-	* @return	array	ordered path info (depth,parent,child,obj_id,type,title)
-	*               or null, if the node_id can not be converted into a node path.
-	*/
-	function getNodePath($a_endnode_id, $a_startnode_id = 0)
-	{
-		return $this->other->getNodePath($a_endnode_id, $a_startnode_id);
-	}
 	// END WebDAV: getNodePath function added
 
 	/**
@@ -609,22 +1028,6 @@ class ilCachedTree extends ilTree
 		return $this->other->getNodeTreeData($a_node_id);
 	}
 
-
-	/**
-	* get all information of a node.
-	* get data of a specific node from tree and object_data
-	* @access	public
-	* @param	integer		node id
-	* @return	array		2-dim (int/str) node_data
-	* @throws InvalidArgumentException
-	*/
-	// BEGIN WebDAV: Pass tree id to this method
-	//function getNodeData($a_node_id)
-	function getNodeData($a_node_id, $a_tree_pk = null)
-	// END PATCH WebDAV: Pass tree id to this method
-	{
-		return $this->other->getNodeData($a_node_id, $a_tree_pk);
-	}
 	
 	/**
 	* get data of parent node from tree and object_data
@@ -646,43 +1049,6 @@ class ilCachedTree extends ilTree
 	protected function fetchTranslationFromObjectDataCache($a_obj_ids)
 	{
 		return $this->other->fetchTranslationFromObjectDataCache($a_obj_ids);
-	}
-
-
-	/**
-	* get all information of a node.
-	* get data of a specific node from tree and object_data
-	* @access	public
-	* @param	integer		node id
-	* @return	boolean		true, if node id is in tree
-	*/
-	function isInTree($a_node_id)
-	{
-		return $this->other->isInTree($a_node_id);
-	}
-
-	/**
-	* get data of parent node from tree and object_data
-	* @access	public
- 	* @param	integer		node id
-	* @return	array
-	* @throws InvalidArgumentException
-	*/
-	public function getParentNodeData($a_node_id)
-	{
-		return $this->other->getParentNodeData($a_node_id);
-	}
-
-	/**
-	* checks if a node is in the path of an other node
-	* @access	public
- 	* @param	integer		object id of start node
-	* @param    integer     object id of query node
-	* @return	integer		number of entries
-	*/
-	public function isGrandChild($a_startnode_id,$a_querynode_id)
-	{
-		return $this->other->isGrandChild($a_startnode_id, $a_querynode_id);
 	}
 
 	/**
@@ -735,8 +1101,11 @@ class ilCachedTree extends ilTree
 	 */
 	public function moveToTrash($a_node_id, $a_set_deleted = false)
 	{
-		$this->purgeCache($a_node_id);
-		return $this->other->moveToTrash($a_node_id, $a_set_deleted);
+		return $this->withInterceptedEvents(function () use ($a_node_id, $a_set_deleted) {
+			$ret = $this->other->moveToTrash($a_node_id, $a_set_deleted);
+			$this->purgeCache($a_node_id);
+			return $ret;
+		});
 	}
 
 	/**
@@ -751,8 +1120,11 @@ class ilCachedTree extends ilTree
 	 */
 	public function saveSubTree($a_node_id, $a_set_deleted = false)
 	{
-		$this->purgeCache($a_node_id);
-		return $this->other->saveSubTree($a_node_id, $a_set_deleted);
+		return $this->withInterceptedEvents(function () use ($a_node_id, $a_set_deleted) {
+			$ret = $this->other->saveSubTree($a_node_id, $a_set_deleted);
+			$this->purgeCache($a_node_id);
+			return $ret;
+		});
 	}
 
 	/**
@@ -807,18 +1179,6 @@ class ilCachedTree extends ilTree
 	function getSavedNodeObjIds(array $a_obj_ids)
 	{
 		return $this->other->getSavedNodeObjIds($a_obj_ids);
-	}
-
-	/**
-	* get parent id of given node
-	* @access	public
-	* @param	integer	node id
-	* @return	integer	parent id
-	* @throws InvalidArgumentException
-	*/
-	function getParentId($a_node_id)
-	{
-		return $this->other->getParentId($a_node_id);
 	}
 
 	/**
@@ -927,7 +1287,7 @@ class ilCachedTree extends ilTree
 	*/
 	function renumber($node_id = 1, $i = 1)
 	{
-		$this->purgeCache($node_id);
+		$this->purgeAll();
 		return $this->other->renumber($node_id, $i);
 	}
 
@@ -943,24 +1303,8 @@ class ilCachedTree extends ilTree
 	*/
 	function __renumber($node_id = 1, $i = 1)
 	{
-		$this->purgeCache($node_id);
+		$this->purgeAll();
 		return $this->other->__renumber($node_id, $i);
-	}
-
-
-	/**
-	* Check for parent type
-	* e.g check if a folder (ref_id 3) is in a parent course obj => checkForParentType(3,'crs');
-	*
- 	* @access	public
-	* @param	integer	ref_id
-	* @param	string type
-	* @return	mixed false if item is not in tree, 
-	* 				  int (object ref_id) > 0 if path container course, int 0 if pathc does not contain the object type 
-	*/
-	function checkForParentType($a_ref_id,$a_type,$a_exclude_source_check = false)
-	{
-		return $this->other->checkForParentType($a_ref_id, $a_exclude_source_check);
 	}
 
 	/**
@@ -1027,13 +1371,13 @@ class ilCachedTree extends ilTree
 	 */
 	public function moveTree($a_source_id, $a_target_id, $a_location = self::POS_LAST_NODE)
 	{
-		$this->purgeCache($a_source_id);
-		$this->purgeCache($a_target_id);
-		return $this->other->moveTree($a_source_id, $a_target_id, $a_location);
+		return $this->withInterceptedEvents(function () use ($a_source_id, $a_target_id, $a_location) {
+			$ret = $this->other->moveTree($a_source_id, $a_target_id, $a_location);
+			$this->purgeCache($a_source_id);
+			$this->purgeCache($a_target_id);
+			return $ret;
+		});
 	}
-	
-	
-	
 	
 	/**
 	 * This method is used for change existing objects 
@@ -1076,8 +1420,11 @@ class ilCachedTree extends ilTree
 	
 	public function deleteNode($a_tree_id,$a_node_id)
 	{
-		$this->purgeCache($a_node_id, $a_tree_id);
-		return $this->other->deleteNode($a_tree_id, $a_node_id);
+		return $this->withInterceptedEvents(function () use ($a_tree_id, $a_node_id) {
+			$ret = $this->other->deleteNode($a_tree_id, $a_node_id);
+			$this->purgeCache($a_node_id, $a_tree_id);
+			return $ret;
+		});
 	}
 
 	/**
