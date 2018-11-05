@@ -1,10 +1,11 @@
 <?php
+
+/* Copyright (c) 2018 Stefan Hecken <stefan.hecken@concepts-and-training.de> */
+
 declare(strict_types=1);
 
 use \ILIAS\TMS\Mailing;
 use \ILIAS\TMS\CourseCreation\Request;
-
-/* Copyright (c) 2017 Nils Haagen <nils.haagen@concepts-and-training.de> */
 
 /**
  * Course-related placeholder-values
@@ -17,14 +18,19 @@ class ilTMSMailContextCourseCreation implements Mailing\MailContext {
 	);
 
 	/**
+	 * @var Request
+	 */
+	protected $request;
+
+	/**
 	 * @var int
 	 */
 	protected $request;
 
 	/**
-	 * @var ilLanguage
+	 * @var \ilLanguage
 	 */
-	protected $g_lang;
+	protected $lng;
 
 	public function __construct(Request $request, \ilLanguage $lng)
 	{
@@ -135,7 +141,6 @@ class ilTMSMailContextCourseCreation implements Mailing\MailContext {
 
 	protected function getObjectByRefId(int $ref_id): \ilObject
 	{
-		assert('is_int($ref_id)');
 		$object = \ilObjectFactory::getInstanceByRefId($ref_id);
 		assert('$object instanceof \ilObject');
 		return $object;
