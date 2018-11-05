@@ -73,7 +73,9 @@ class ilCachedTree extends ilTree
 
 	protected function hasCachedInfo($node_id) {
 		$shard_id = $this->getCacheShardIdOf($node_id);
-		$this->loadShard($shard_id);
+		if (!isset($this->cache_shards[$shard_id])) {
+			$this->loadShard($shard_id);
+		}
 		return isset($this->cache_shards[$shard_id][$node_id]);
 	}
 
