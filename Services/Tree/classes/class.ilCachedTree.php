@@ -74,7 +74,7 @@ class ilCachedTree extends ilTree
 	protected function hasCachedInfo($node_id) {
 		$shard_id = $this->getCacheShardIdOf($node_id);
 		$this->loadShard($shard_id);
-		return isset($this->cache[$shard_id][$key]);
+		return isset($this->cache_shards[$shard_id][$node_id]);
 	}
 
 	protected function getCacheShardIdOf($node_id) {
@@ -488,7 +488,7 @@ class ilCachedTree extends ilTree
 	*/
 	function isInTree($a_node_id)
 	{
-		return $this->hasCachedInfo($node_id) || $this->other->isInTree($a_node_id);
+		return $this->hasCachedInfo($a_node_id);
 	}
 
 	/**
