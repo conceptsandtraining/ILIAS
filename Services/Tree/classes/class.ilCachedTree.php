@@ -359,6 +359,9 @@ class ilCachedTree extends ilTree
 	}
 
 	protected function getSubTreeRecursive($node) {
+		if (!isset($node["child"]) || !$node["child"]) {
+			return;
+		}
 		$children = $this->getChilds($node["child"]);
 		foreach ($children as $child) {
 			// The "last" key is set on the last array entry by the original
@@ -367,9 +370,6 @@ class ilCachedTree extends ilTree
 			// really know if this changes a thing.
 			if (isset($child["last"])) {
 				unset($child["last"]);
-			}
-			if (!isset($child["child"])) {
-				continue;
 			}
 			yield $child;
 			foreach ($this->getSubTreeRecursive($child) as $sub) {
