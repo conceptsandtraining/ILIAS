@@ -219,8 +219,7 @@ class ilCachedTree extends ilTree
 			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
 		}
 
-		if (!isset($a_node_id))
-		{
+		if (!isset($a_node_id)) {
 			$message = "No node_id given!";
 			throw new InvalidArgumentException($message);
 		}
@@ -378,6 +377,10 @@ class ilCachedTree extends ilTree
 
 	protected function getIdsFromNodes($nodes) {
 		foreach ($nodes as $node) {
+			// There might be broken node-records.
+			if (!isset($node["child"])) {
+				continue;
+			}
 			yield $node["child"];
 		}
 	}
