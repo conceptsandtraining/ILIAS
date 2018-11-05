@@ -215,6 +215,10 @@ class ilCachedTree extends ilTree
 	*/
 	function getChilds($a_node_id, $a_order = "", $a_direction = "ASC")
 	{
+		if (!$this->isInTree($a_node_id)) {
+			return [];
+		}
+
 		if ($a_order !== "" || $a_direction !== "ASC") {
 			return $this->other->getChilds($a_node_id, $a_order, $a_direction);
 		}
