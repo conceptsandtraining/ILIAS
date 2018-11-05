@@ -675,7 +675,15 @@ class UnboundCourseProvider extends SeparatedUnboundProvider {
 					, 1100
 					, [
 						CourseInfo::CONTEXT_BOOKING_DEFAULT_INFO
-						, CourseInfo::CONTEXT_ASSIGNED_TRAINING_DETAIL_INFO
+					  ]
+				);
+
+				$ret[] = $this->createCourseInfoObject($entity
+					, $txt("title")
+					, nl2br($provider)
+					, 1100
+					, [
+						CourseInfo::CONTEXT_ASSIGNED_TRAINING_DETAIL_INFO
 						, CourseInfo::CONTEXT_USER_BOOKING_DETAIL_INFO
 						, CourseInfo::CONTEXT_ADMIN_OVERVIEW_DETAIL_INFO
 					  ]
