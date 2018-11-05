@@ -568,6 +568,36 @@ class ilCachedTree extends ilTree
 		return 0;
 	}
 
+	//--------------------------------------
+	// INTERCEPT EVENTS
+	//--------------------------------------
+
+	/**
+	 * @var	array
+	 */
+	protected $intercepted_events = array();
+
+	public function raise(string $module, string $event, array $params) {
+		$this->intercepted_events[] = [$module, $event, $params];
+	}
+
+	public function withInterceptedEvents(\Closure $call) {
+		$app_event_handler = $GLOBALS["ilAppEventHandler"];
+		$GLOBALS["ilAppEventHandler"] = $this;
+		$this->intercepted_events = [];
+
+		$ret = $call();
+
+		foreach ($this->intercepted_events as $event) {
+			list($module, $event, $params) = $event;
+			$app_event_handler->raise($module, $event, $params);
+		}
+
+		$this->intercepted_events = [];
+		$GLOBALS["ilAppEventHandler"] = $app_event_handler;
+
+		return $ret;
+	}
 
 	//--------------------------------------
 	// FALLBACKS TO CACHELESS TREE
@@ -812,10 +842,12 @@ class ilCachedTree extends ilTree
 	 */
 	public function insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos = IL_LAST_NODE, $a_reset_deleted_date = false)
 	{
-		$ret = $this->other->insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date);
-		$this->purgeCache($a_source_id);
-		$this->purgeCache($a_target_id);
-		return $ret;
+		return $this->withInterceptedEvents(function () use ($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date) {
+			$ret = $this->other->insertNodeFromTrash($a_source_id, $a_target_id, $a_tree_id, $a_pos, $a_reset_deleted_date);
+			$this->purgeCache($a_source_id);
+			$this->purgeCache($a_target_id);
+			return $ret;
+		});
 	}
 	
 	
@@ -829,10 +861,12 @@ class ilCachedTree extends ilTree
 	*/
 	public function insertNode($a_node_id, $a_parent_id, $a_pos = IL_LAST_NODE, $a_reset_deletion_date = false)
 	{
-		$ret = $this->other->insertNode($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date);
-		$this->purgeCache($a_node_id);
-		$this->purgeCache($a_parent_id);
-		return $ret;
+		return $this->withInterceptedEvents(function () use ($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date) {
+			$ret = $this->other->insertNode($a_node_id, $a_parent_id, $a_pos, $a_reset_deletion_date);
+			$this->purgeCache($a_node_id);
+			$this->purgeCache($a_parent_id);
+			return $ret;
+		});
 	}
 	
 	/**
@@ -861,9 +895,11 @@ class ilCachedTree extends ilTree
 	 */
 	function deleteTree($a_node)
 	{
-		$ret = $this->other->deleteTree($a_node);
-		$this->purgeCache($a_node);
-		return $ret;
+		return $this->withInterceptedEvents(function () use ($a_node) {
+			$ret = $this->other->deleteTree($a_node);
+			$this->purgeCache($a_node);
+			return $ret;
+		});
 	}
 	
 	/**
@@ -1063,9 +1099,11 @@ class ilCachedTree extends ilTree
 	 */
 	public function moveToTrash($a_node_id, $a_set_deleted = false)
 	{
-		$ret = $this->other->moveToTrash($a_node_id, $a_set_deleted);
-		$this->purgeCache($a_node_id);
-		return $ret;
+		return $this->withInterceptedEvents(function () use ($a_node_id, $a_set_deleted) {
+			$ret = $this->other->moveToTrash($a_node_id, $a_set_deleted);
+			$this->purgeCache($a_node_id);
+			return $ret;
+		});
 	}
 
 	/**
@@ -1080,9 +1118,11 @@ class ilCachedTree extends ilTree
 	 */
 	public function saveSubTree($a_node_id, $a_set_deleted = false)
 	{
-		$ret = $this->other->saveSubTree($a_node_id, $a_set_deleted);
-		$this->purgeCache($a_node_id);
-		return $ret;
+		return $this->withInterceptedEvents(function () use ($a_node_id, $a_set_deleted) {
+			$ret = $this->other->saveSubTree($a_node_id, $a_set_deleted);
+			$this->purgeCache($a_node_id);
+			return $ret;
+		});
 	}
 
 	/**
@@ -1329,10 +1369,12 @@ class ilCachedTree extends ilTree
 	 */
 	public function moveTree($a_source_id, $a_target_id, $a_location = self::POS_LAST_NODE)
 	{
-		$ret = $this->other->moveTree($a_source_id, $a_target_id, $a_location);
-		$this->purgeCache($a_source_id);
-		$this->purgeCache($a_target_id);
-		return $ret;
+		return $this->withInterceptedEvents(function () use ($a_source_id, $a_target_id, $a_location) {
+			$ret = $this->other->moveTree($a_source_id, $a_target_id, $a_location);
+			$this->purgeCache($a_source_id);
+			$this->purgeCache($a_target_id);
+			return $ret;
+		});
 	}
 	
 	/**
@@ -1376,9 +1418,11 @@ class ilCachedTree extends ilTree
 	
 	public function deleteNode($a_tree_id,$a_node_id)
 	{
-		$ret = $this->other->deleteNode($a_tree_id, $a_node_id);
-		$this->purgeCache($a_node_id, $a_tree_id);
-		return $ret;
+		return $this->withInterceptedEvents(function () use ($a_tree_id, $a_node_id) {
+			$ret = $this->other->deleteNode($a_tree_id, $a_node_id);
+			$this->purgeCache($a_node_id, $a_tree_id);
+			return $ret;
+		});
 	}
 
 	/**
