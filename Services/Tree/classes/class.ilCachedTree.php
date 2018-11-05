@@ -434,7 +434,7 @@ class ilCachedTree extends ilTree
 		$res = [$node];
 		while ($node["child"] != $a_startnode_id && $node["parent"] != 0) {
 			$node = $this->getNodeData($node["parent"]);
-			$res[] = $node;
+			$res[] = $this->addCurrentObjectData($node);
 		}
 
 		if ($a_startnode_id != 0 && $node["child"] != $a_startnode_id) {
