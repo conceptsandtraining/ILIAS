@@ -368,6 +368,9 @@ class ilCachedTree extends ilTree
 			if (isset($child["last"])) {
 				unset($child["last"]);
 			}
+			if (!isset($child["child"])) {
+				continue;
+			}
 			yield $child;
 			foreach ($this->getSubTreeRecursive($child) as $sub) {
 				yield $sub;
