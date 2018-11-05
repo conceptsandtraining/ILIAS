@@ -14,8 +14,7 @@ $cached_tree = new ilCachedTree(
 	$tree,
 	$global_cache,
 	$DIC["ilObjDataCache"],
-	$DIC["objDefinition"],
-	$DIC["lng"]
+	$DIC["objDefinition"]
 );
 
 $methods = [
