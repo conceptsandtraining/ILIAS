@@ -1272,6 +1272,7 @@ class ilObjCourse extends ilContainer implements ilMembershipRegistrationCodes
 				$obj->create(false);
 				$obj->createReference();
 				$obj->putInTree($this->getRefId());
+				$this->setPermissionsAfterCreation($obj);
 
 				$link_resource_items = new ilLinkResourceItems($obj->getId());
 				$link_resource_items->setTarget($value);
@@ -1293,6 +1294,7 @@ class ilObjCourse extends ilContainer implements ilMembershipRegistrationCodes
 				$fileObj->create();
 				$fileObj->createReference();
 				$fileObj->putInTree($this->getRefId());
+				$this->setPermissionsAfterCreation($fileObj);
 
 				$fileObj->setTitle($file_name);
 				$fileObj->setDescription("");
@@ -1316,6 +1318,18 @@ class ilObjCourse extends ilContainer implements ilMembershipRegistrationCodes
 				throw new \RuntimeException("Can't process configuration '$key'");
 			}
 		}
+	}
+
+	protected function setPermissionsAfterCreation($obj)
+	{
+		global $DIC;
+		$g_rbacreview = $DIC["rbacreview"];
+		$obj->setPermissions($this->getRefId());
+
+		include_once "Services/AccessControl/classes/class.ilRbacLog.php";
+		$rbac_log_roles = $g_rbacreview->getParentRoleIds($obj->getRefId(), false);
+		$rbac_log = ilRbacLog::gatherFaPa($obj->getRefId(), array_keys($rbac_log_roles), true);
+		ilRbacLog::add(ilRbacLog::CREATE_OBJECT, $obj->getRefId(), $rbac_log);
 	}
 	// cat-tms-patch end
 
