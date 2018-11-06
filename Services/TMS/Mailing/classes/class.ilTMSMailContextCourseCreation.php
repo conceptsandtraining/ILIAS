@@ -23,11 +23,6 @@ class ilTMSMailContextCourseCreation implements Mailing\MailContext {
 	protected $request;
 
 	/**
-	 * @var int
-	 */
-	protected $request;
-
-	/**
 	 * @var \ilLanguage
 	 */
 	protected $lng;
