@@ -1301,6 +1301,8 @@ class ilObjCourse extends ilContainer implements ilMembershipRegistrationCodes
 				$fileObj->setFileName($file_name);
 				$fileObj->setFileType(ilMimeTypeUtil::getMimeType("", $file_name, $type));
 				$fileObj->setFileSize($size);
+				$fileObj->setVersion(1);
+				ilUtil::makeDirParents($fileObj->getDirectory($fileObj->getVersion()));
 
 				$fileObj->createDirectory();
 				$fileObj->raiseUploadError(true);

@@ -358,7 +358,9 @@ class ilObjFile extends ilObject2 {
 	 * copy file
 	 */
 	function copy($a_source, $a_destination) {
-		return copy($a_source, $this->getDirectory() . "/" . $a_destination);
+		// cat-tms-patch start
+		return copy($a_source, $this->getDirectory($this->getVersion()) . "/" . $a_destination);
+		// cat-tms-patch end
 	}
 
 
@@ -694,7 +696,6 @@ class ilObjFile extends ilObject2 {
 		}
 
 		$file = ilFileUtils::getValidFilename($file);
-
 		if ($this->file_storage->fileExists($file)) {
 			global $DIC;
 			$ilClientIniFile = $DIC['ilClientIniFile'];
