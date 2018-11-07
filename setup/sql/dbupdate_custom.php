@@ -44,29 +44,11 @@
 ?>
 <#4>
 <?php
-	// cat-tms-patch start
-	$ilDB->insert(
-		'mail_tpl_ctx',
-		array(
-			'id' => array('text', 'crs_context_invitation'),
-			'component' => array('text', 'Modules/Course'),
-			'class' => array('text', 'ilCourseMailTemplateInvitationContext')
-		)
-	);
-	// cat-tms-patch end
+;
 ?>
 <#5>
 <?php
-	// cat-tms-patch start
-	$ilDB->insert(
-		'mail_tpl_ctx',
-		array(
-			'id' => array('text', 'crs_context_automatic'),
-			'component' => array('text', 'Modules/Course'),
-			'class' => array('text', 'ilCourseMailTemplateAutomaticContext')
-		)
-	);
-	// cat-tms-patch end
+;
 ?>
 <#6>
 <?php
