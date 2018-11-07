@@ -545,6 +545,10 @@ class ilObjSession extends ilObject
 		$new_obj->setWaitingListAutoFill($this->hasWaitingListAutoFill());
 		$new_obj->setRegistrationMinUsers($this->getRegistrationMinUsers());
 		$new_obj->setRegistrationMaxUsers($this->getRegistrationMaxUsers());
+
+		// cat-tms-patch start
+		$new_obj->setTutorSource($this->getTutorSource());
+		// cat-tms-patch end
 		
 		$new_obj->update(true);
 		
