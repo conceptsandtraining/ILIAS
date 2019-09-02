@@ -77,6 +77,7 @@ class ilRepositorySearchGUI
 
 		$this->ctrl = $ilCtrl;
 		$this->tpl = $tpl;
+		$this->tree = $DIC['tree'];
 		$this->lng = $lng;
 		$this->lng->loadLanguageModule('search');
 		$this->lng->loadLanguageModule('crs');
@@ -89,6 +90,8 @@ class ilRepositorySearchGUI
 		$this->result_obj = new ilSearchResult();
 		$this->result_obj->setMaxHits(1000000);
 		$this->settings = new ilSearchSettings();
+		$this->ui_renderer = $DIC["ui.renderer"];
+		$this->ui_factory = $DIC["ui.factory"];
 
 	}
 	
@@ -596,9 +599,11 @@ class ilRepositorySearchGUI
 	public function showSearch()
 	{
 		$this->initFormSearch();
-		$this->tpl->setContent($this->form->getHTML());
+		$this->tpl->setContent(
+			$this->form->getHTML()
+		);
 	}
-	
+
 	/**
 	 * submit from autocomplete
 	 */
@@ -629,7 +634,7 @@ class ilRepositorySearchGUI
 		$this->form =  new ilPropertyFormGUI();
 		$this->form->setFormAction($this->ctrl->getFormAction($this,'search'));
 		$this->form->setTitle($this->getTitle());
-		$this->form->addCommandButton('performSearch', $this->lng->txt('search'));
+		$this->form->addCommandButton('performSearch', $this->lng->txt('search'),'performSearch');
 		$this->form->addCommandButton('cancel', $this->lng->txt('cancel'));
 		
 		
@@ -734,6 +739,11 @@ class ilRepositorySearchGUI
 		$group->setMaxLength(120);
 		$groups->addSubItem($group);
 		$kind->addOption($groups);
+
+		$orgus = new ilRadioOption($this->lng->txt('search_for_orgu_members'),'orgu');
+		$orgu = new ilOrguSelectInputGUI('rep_sel_title','rep_query_orgu', true, $this);
+		$orgus->addSubItem($orgu);
+		$kind->addOption($orgus);
 	}
 	
 
@@ -762,6 +772,9 @@ class ilRepositorySearchGUI
 				$found_query = true;
 				break;
 			}
+		}
+		if(array_key_exists('rep_query_orgu', $_POST) && count($_POST['rep_query_orgu']) > 0) {
+			$found_query = true;
 		}
 		if(!$found_query)
 		{
@@ -793,7 +806,14 @@ class ilRepositorySearchGUI
 			case 'role':
 				$this->__performRoleSearch();
 				break;
-
+			case 'orgu':
+				$_POST['obj'] = array_map(
+					function($ref_id) {
+						return (int)ilObject::_lookupObjId($ref_id);
+					},
+					$_POST['rep_query_orgu']
+				);
+				return $this->listUsers();
 			default:
 				echo 'not defined';
 		}
@@ -1293,6 +1313,17 @@ class ilRepositorySearchGUI
 					}
 					
 					$members = array_merge($members,  ilUserFilter::getInstance()->filter($assigned));
+					break;
+				case 'orgu':
+					if($ref_ids = ilObject::_getAllReferences($obj_id)) {
+						$members = array_merge(
+							$members,
+							ilOrgUnitUserAssignmentQueries::getInstance()
+								->getUserIdsOfOrgUnit(
+									array_shift($ref_ids)
+								)
+						);
+					}
 					break;
 			}
 		}

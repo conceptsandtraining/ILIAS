@@ -6314,6 +6314,7 @@ class ComposerStaticInit2fffdf922cf8fdbf1f62eec345993c83
         'ilOrgUnitUserQueries' => __DIR__ . '/../..' . '/../../Modules/OrgUnit/classes/User/class.ilOrgUnitUserQueries.php',
         'ilOrgUnitUserQueriesInterface' => __DIR__ . '/../..' . '/../../Modules/OrgUnit/interfaces/class.ilOrgUnitUserQueriesInterface.php',
         'ilOrguException' => __DIR__ . '/../..' . '/../../Modules/OrgUnit/classes/Exceptions/class.ilOrguException.php',
+        'ilOrguSelectInputGUI' => __DIR__ . '/../..' . '/../../Services/Form/classes/class.ilOrguSelectInputGUI.php',
         'ilOrguUserPickerToolbarInputGUI' => __DIR__ . '/../..' . '/../../Modules/OrgUnit/classes/class.ilOrguUserPickerToolbarInputGUI.php',
         'ilOverlayGUI' => __DIR__ . '/../..' . '/../../Services/UIComponent/Overlay/classes/class.ilOverlayGUI.php',
         'ilPCAMDPageList' => __DIR__ . '/../..' . '/../../Modules/Wiki/classes/class.ilPCAMDPageList.php',

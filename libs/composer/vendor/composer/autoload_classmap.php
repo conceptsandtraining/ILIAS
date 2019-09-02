@@ -5977,6 +5977,7 @@ return array(
     'ilOrgUnitUserQueries' => $baseDir . '/../../Modules/OrgUnit/classes/User/class.ilOrgUnitUserQueries.php',
     'ilOrgUnitUserQueriesInterface' => $baseDir . '/../../Modules/OrgUnit/interfaces/class.ilOrgUnitUserQueriesInterface.php',
     'ilOrguException' => $baseDir . '/../../Modules/OrgUnit/classes/Exceptions/class.ilOrguException.php',
+    'ilOrguSelectInputGUI' => $baseDir . '/../../Services/Form/classes/class.ilOrguSelectInputGUI.php',
     'ilOrguUserPickerToolbarInputGUI' => $baseDir . '/../../Modules/OrgUnit/classes/class.ilOrguUserPickerToolbarInputGUI.php',
     'ilOverlayGUI' => $baseDir . '/../../Services/UIComponent/Overlay/classes/class.ilOverlayGUI.php',
     'ilPCAMDPageList' => $baseDir . '/../../Modules/Wiki/classes/class.ilPCAMDPageList.php',
