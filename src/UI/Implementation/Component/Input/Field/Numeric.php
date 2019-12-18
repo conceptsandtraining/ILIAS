@@ -37,6 +37,14 @@ class Numeric extends Input implements C\Input\Field\Numeric
                 $this->refinery->null()
             ])
         );
+        $this->setAdditionalTransformation(
+            $this->refinery->custom()->transformation(function($v) {
+                if ($v === "" || is_null($v)) {
+                    return null;
+                }
+                return (int) $v;
+            })
+        );
     }
 
 
