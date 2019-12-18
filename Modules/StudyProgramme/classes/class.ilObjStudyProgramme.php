@@ -593,61 +593,15 @@ class ilObjStudyProgramme extends ilContainer
         return $this->ps->isChangeableForObject();
     }
 
-    public function setReminderNotRestartedByUserDays(int $days) : void
-    {
-        $this->settings->setReminderNotRestartedByUserDays($days);
+    public function getAutoMailSettings() : \ilStudyProgrammeAutoMailSettings {
+        return $this->settings->getAutoMailSettings();
     }
 
-    public function shouldSendReAssignedMail() : bool
-    {
-        return $this->settings->sendReAssignedMail();
+    public function setAutoMailSettings(\ilStudyProgrammeAutoMailSettings $automail_settings) : void {
+        $this->settings = $this->settings->withAutoMailSettings($automail_settings);
     }
 
-    public function shouldSendInfoToReAssignMail() : bool
-    {
-        return $this->settings->sendInfoToReAssignMail();
-    }
 
-    public function shouldSendRiskyToFailMail() : bool
-    {
-        return $this->settings->sendRiskyToFailMail();
-    }
-
-    public function setSendReAssignedMail(bool $send_re_assigned_mail) : void
-    {
-        $this->settings = $this->settings->withSendReAssignedMail($send_re_assigned_mail);
-    }
-
-    public function setSendInfoToReAssignMail(bool $send_info_to_re_assign_mail) : void
-    {
-        $this->settings = $this->settings->withSendInfoToReAssignMail($send_info_to_re_assign_mail);
-    }
-
-    public function setSendRiskyToFailMail(bool $send_risky_to_fail_mail) : void
-    {
-        $this->settings = $this->settings->withSendRiskyToFailMail($send_risky_to_fail_mail);
-    }
-
-    /**
-     * @return int | null
-     */
-    public function getReminderNotRestartedByUserDays()
-    {
-        return $this->settings->getReminderNotRestartedByUserDays();
-    }
-
-    public function setProcessingEndsNotSuccessfulDays(int $days) : void
-    {
-        $this->settings->setProcessingEndsNotSuccessfulDays($days);
-    }
-
-    /**
-     * @return int | null
-     */
-    public function getProcessingEndsNotSuccessfulDays()
-    {
-        return $this->settings->getProcessingEndsNotSuccessfulDays();
-    }
     ////////////////////////////////////
     // TREE NAVIGATION
     ////////////////////////////////////

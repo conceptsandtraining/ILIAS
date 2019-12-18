@@ -26,11 +26,6 @@ class ilObjStudyProgrammeSettingsGUI
     const PROP_VALIDITY_OF_QUALIFICATION = "validity_qualification";
     const PROP_RESTART = "restart";
     const PROP_ACCESS_CONTROL_BY_ORGU_POSITION = "access_ctr_by_orgu_position";
-    const PROP_CRON_JOB_PRG_NOT_RESTARTED = "prg_not_restarted_by_user";
-    const PROP_CRON_JOB_PROCESSING_ENDS_NOT_SUCCESSFUL = "prg_processing_ends_not_successful";
-    const PROP_SEND_RE_ASSIGNED_MAIL = "send_re_assigned_mail";
-    const PROP_SEND_INFO_TO_RE_ASSIGN_MAIL = "send_info_to_re_assign_mail";
-    const PROP_SEND_RISKY_TO_FAIL_MAIL = "send_risky_to_fail_mail";
 
     const OPT_NO_DEADLINE = 'opt_no_deadline';
     const OPT_DEADLINE_PERIOD = "opt_deadline_period";
@@ -309,20 +304,7 @@ class ilObjStudyProgrammeSettingsGUI
                             break;
                     }
 
-                    $send_re_assigned_mail = $values[5][self::PROP_SEND_RE_ASSIGNED_MAIL];
-                    $send_info_to_re_assign_mail = !is_null($values[5][self::PROP_SEND_INFO_TO_RE_ASSIGN_MAIL]);
-                    if ($send_info_to_re_assign_mail) {
-                        $prg_not_restarted_by_user_days = $values[5][self::PROP_SEND_INFO_TO_RE_ASSIGN_MAIL][0];
-                        $prg->setReminderNotRestartedByUserDays($prg_not_restarted_by_user_days);
-                    }
-                    $send_risky_to_fail_mail = !is_null($values[5][self::PROP_SEND_RISKY_TO_FAIL_MAIL]);
-                    if ($send_risky_to_fail_mail) {
-                        $prg_processing_ends_not_successful_days = $values[5][self::PROP_SEND_RISKY_TO_FAIL_MAIL][0];
-                        $prg->setProcessingEndsNotSuccessfulDays($prg_processing_ends_not_successful_days);
-                    }
-                    $prg->setSendReAssignedMail($send_re_assigned_mail);
-                    $prg->setSendInfoToReAssignMail($send_info_to_re_assign_mail);
-                    $prg->setSendRiskyToFailMail($send_risky_to_fail_mail);
+                    $prg->setAutoMailSettings($values["automail_settings"]);
 
                     if (array_key_exists(6, $values)) {
                         $prg->setAccessControlByOrguPositions(
@@ -342,6 +324,9 @@ class ilObjStudyProgrammeSettingsGUI
         ilObjStudyProgramme $prg
     ) : array {
         $languages = ilMDLanguageItem::_getLanguages();
+        global $DIC;
+        $ilLng = $DIC->language();
+        $refinery = $DIC["refinery"];
         $return = [
             $ff->section(
                 [
@@ -402,11 +387,7 @@ class ilObjStudyProgrammeSettingsGUI
                 $this->txt("prg_validity_of_qualification"),
                 ""
             ),
-            $ff->section(
-                $this->getCronJobConfiguration($prg),
-                $this->txt("prg_cron_job_configuration"),
-                ""
-            )
+            "automail_settings" => $prg->getAutoMailSettings()->toFormInput($ff, $ilLng, $refinery)
         ];
         if ($prg->getPositionSettingsIsActiveForPrg()
             && $prg->getPositionSettingsIsChangeableForPrg()) {
@@ -510,64 +491,6 @@ class ilObjStudyProgrammeSettingsGUI
             ''
         );
         return $sg->withValue($option);
-    }
-
-    protected function getCronJobConfiguration(ilObjStudyProgramme $prg)
-    {
-        $ff = $this->input_factory->field();
-        $prg_not_restarted_input =
-            $ff->numeric(
-                $this->txt('prg_user_not_restarted_time_input'),
-                $this->txt('prg_user_not_restarted_time_input_info')
-            )
-            ->withAdditionalTransformation(
-                $this->refinery_factory->int()->isGreaterThan(-1)
-            )
-            ->withRequired(true)
-        ;
-
-        $prg_processing_ends_no_success_input =
-            $prg_not_restarted_input
-                ->withLabel($this->txt('prg_processing_ends_no_success'))
-                ->withByLine($this->txt('prg_processing_ends_no_success_info'))
-        ;
-
-        $send_re_assigned_mail = $ff->checkbox(
-            $this->txt("send_re_assigned_mail"),
-            $this->txt('send_re_assigned_mail_info')
-            )
-            ->withValue($prg->shouldSendReAssignedMail())
-        ;
-        $send_info_to_re_assign_mail = $ff->optionalGroup(
-            [ $prg_not_restarted_input
-                ],
-            $this->txt("send_info_to_re_assign_mail"),
-            $this->txt("send_info_to_re_assign_mail_info")
-            )
-            ->withValue(
-                $prg->shouldSendInfoToReAssignMail()
-                    ? [(int) $prg->getReminderNotRestartedByUserDays()]
-                    : null
-            )
-        ;
-        $send_risky_to_fail_mail = $ff->optionalGroup(
-            [ $prg_processing_ends_no_success_input
-                ],
-            $this->txt("send_risky_to_fail_mail"),
-            $this->txt("send_risky_to_fail_mail_info")
-            )
-            ->withValue(
-                $prg->shouldSendRiskyToFailMail()
-                    ? [(int) $prg->getProcessingEndsNotSuccessfulDays()]
-                    : null
-            )
-        ;
-
-        return [
-            self::PROP_SEND_RE_ASSIGNED_MAIL => $send_re_assigned_mail,
-            self::PROP_SEND_INFO_TO_RE_ASSIGN_MAIL => $send_info_to_re_assign_mail,
-            self::PROP_SEND_RISKY_TO_FAIL_MAIL => $send_risky_to_fail_mail,
-        ];
     }
 
     protected function getRestartSubform(ilObjStudyProgramme $prg)

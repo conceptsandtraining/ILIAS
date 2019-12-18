@@ -121,11 +121,11 @@ class ilStudyProgrammeSettingsDBRepository implements ilStudyProgrammeSettingsRe
             $settings->getAccessControlByOrguPositions(),
             $deadine_date,
             $vq_date,
-            $settings->getReminderNotRestartedByUserDays(),
-            $settings->getProcessingEndsNotSuccessfulDays(),
-            $settings->sendReAssignedMail(),
-            $settings->sendInfoToReAssignMail(),
-            $settings->sendRiskyToFailMail()
+            $settings->getAutoMailSettings()->getReminderNotRestartedByUserDays(),
+            $settings->getAutoMailSettings()->getProcessingEndsNotSuccessfulDays(),
+            $settings->getAutoMailSettings()->getSendReAssignedMail(),
+            false,
+            false
         );
         self::$cache[$settings->getObjId()] = $settings;
     }
@@ -287,13 +287,11 @@ class ilStudyProgrammeSettingsDBRepository implements ilStudyProgrammeSettingsRe
         if (!is_null($proc_end_no_success)) {
             $proc_end_no_success = (int) $proc_end_no_success;
         }
-
-        $return->setReminderNotRestartedByUserDays($rm_nr_by_usr_days);
-        $return->setProcessingEndsNotSuccessfulDays($proc_end_no_success);
-        return $return->withSendReAssignedMail((bool) $row[self::FIELD_SEND_RE_ASSIGNED_MAIL])
-            ->withSendInfoToReAssignMail((bool) $row[self::FIELD_SEND_INFO_TO_RE_ASSIGN_MAIL])
-            ->withSendRiskyToFailMail((bool) $row[self::FIELD_SEND_RISKY_TO_FAIL_MAIL])
-        ;
+        return $return->withAutoMailSettings(new \ilStudyProgrammeAutoMailSettings(
+            (bool) $row[self::FIELD_SEND_RE_ASSIGNED_MAIL],
+            $rm_nr_by_usr_days,
+            $proc_end_no_success
+        ));
     }
 
     /**
